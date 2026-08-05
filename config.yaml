@@ -1,0 +1,18 @@
+docker:
+  socket: /var/run/docker.sock
+web:
+  enabled: false
+  port: 8080
+  bind: 127.0.0.1
+stats:
+  interval: 5s
+  buffer_size: 60
+events:
+  fallback_refresh: 30s
+restart_loop:
+  threshold: 3
+  window: 5m
+tui:
+  refresh_rate: 100ms
+compose:
+  stacks_dir: ~/.local/share/dockyard/stacks

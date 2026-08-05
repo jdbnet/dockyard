@@ -1,0 +1,17 @@
+[Unit]
+Description=Dockyard Docker Manager
+After=docker.service network-online.target
+Wants=docker.service network-online.target
+
+[Service]
+Type=simple
+User=dockyard
+Group=docker
+SupplementaryGroups=docker
+ExecStart=/usr/local/bin/dockyard --headless --web /etc/dockyard/config.yaml
+Restart=on-failure
+RestartSec=5
+AmbientCapabilities=
+
+[Install]
+WantedBy=multi-user.target
