@@ -2,6 +2,8 @@ package api
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"fmt"
 	"net/http"
 	"time"
@@ -10,26 +12,33 @@ import (
 	"git.jdbnet.co.uk/jamie/dockyard/internal/engine"
 )
 
+const sessionCookieName = "dockyard_session"
+
 type Server struct {
-	cfg    *config.Config
-	eng    *engine.Engine
-	server *http.Server
-	mux    *http.ServeMux
+	cfg          *config.Config
+	eng          *engine.Engine
+	server       *http.Server
+	mux          *http.ServeMux
+	sessionToken string
 }
 
 func NewServer(cfg *config.Config, eng *engine.Engine) *Server {
 	mux := http.NewServeMux()
+	token := make([]byte, 32)
+	_, _ = rand.Read(token)
 	s := &Server{
-		cfg: cfg,
-		eng: eng,
-		mux: mux,
+		cfg:          cfg,
+		eng:          eng,
+		mux:          mux,
+		sessionToken: hex.EncodeToString(token),
 		server: &http.Server{
 			Addr:              cfg.Addr(),
-			Handler:           cors(mux),
+			Handler:           nil,
 			ReadHeaderTimeout: 10 * time.Second,
 		},
 	}
 	s.registerRoutes()
+	s.server.Handler = cors(s.authMiddleware(mux))
 	return s
 }
 
@@ -56,6 +65,9 @@ func (s *Server) Shutdown(ctx context.Context) error {
 
 func (s *Server) registerRoutes() {
 	s.mux.HandleFunc("GET /api/v1/health", s.handleHealth)
+	s.mux.HandleFunc("GET /api/v1/auth/status", s.handleAuthStatus)
+	s.mux.HandleFunc("POST /api/v1/auth/login", s.handleAuthLogin)
+	s.mux.HandleFunc("POST /api/v1/auth/logout", s.handleAuthLogout)
 
 	s.mux.HandleFunc("GET /api/v1/containers", s.handleListContainers)
 	s.mux.HandleFunc("GET /api/v1/containers/{id}", s.handleGetContainer)

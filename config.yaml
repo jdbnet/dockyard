@@ -4,6 +4,9 @@ web:
   enabled: false
   port: 8080
   bind: 127.0.0.1
+auth:
+  username: admin
+  password: changeme
 stats:
   interval: 5s
   buffer_size: 60

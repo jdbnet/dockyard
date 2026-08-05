@@ -30,3 +30,18 @@ func TestEnvOverride(t *testing.T) {
 	}
 	os.Unsetenv("DOCKYARD_WEB_PORT")
 }
+
+func TestAuthEnabled(t *testing.T) {
+	cfg, err := LoadConfig(filepath.Join(t.TempDir(), "missing.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.AuthEnabled() {
+		t.Fatal("auth should be disabled by default")
+	}
+	cfg.Auth.Username = "admin"
+	cfg.Auth.Password = "secret"
+	if !cfg.AuthEnabled() {
+		t.Fatal("auth should be enabled when credentials set")
+	}
+}

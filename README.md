@@ -73,7 +73,19 @@ restart_loop:
   window: 5m
 ```
 
-Environment overrides: `DOCKYARD_DOCKER_SOCKET`, `DOCKYARD_WEB_PORT`, `DOCKYARD_WEB_BIND`, `DOCKYARD_WEB_ENABLED`.
+Environment overrides: `DOCKYARD_DOCKER_SOCKET`, `DOCKYARD_WEB_PORT`, `DOCKYARD_WEB_BIND`, `DOCKYARD_WEB_ENABLED`, `DOCKYARD_AUTH_USER`, `DOCKYARD_AUTH_PASS`.
+
+### Web authentication
+
+Set credentials in `config.yaml` (or via env). When `auth.username` is empty, the web UI is open without login.
+
+```yaml
+auth:
+  username: admin
+  password: changeme
+```
+
+Leave `username` blank to disable auth (default for local-only use).
 
 ## TUI keybindings
 
@@ -110,7 +122,7 @@ cd ui && npm run dev
 | Compose grouping | Yes | Yes | Yes |
 | Live stats | Yes | Limited | Yes |
 | Single static binary | Yes | No (Node) | No |
-| Auth required | No | Optional | Yes |
+| Auth required | Optional | Optional | Yes |
 | Kubernetes | No | No | Yes |
 
 ## Requirements

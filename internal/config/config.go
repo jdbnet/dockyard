@@ -14,6 +14,7 @@ type Config struct {
 	Docker      DockerConfig      `yaml:"docker"`
 	Compose     ComposeConfig     `yaml:"compose"`
 	Web         WebConfig         `yaml:"web"`
+	Auth        AuthConfig        `yaml:"auth"`
 	Stats       StatsConfig       `yaml:"stats"`
 	Events      EventsConfig      `yaml:"events"`
 	RestartLoop RestartLoopConfig `yaml:"restart_loop"`
@@ -32,6 +33,11 @@ type WebConfig struct {
 	Enabled bool   `yaml:"enabled"`
 	Port    int    `yaml:"port"`
 	Bind    string `yaml:"bind"`
+}
+
+type AuthConfig struct {
+	Username string `yaml:"username"`
+	Password string `yaml:"password"`
 }
 
 type StatsConfig struct {
@@ -131,8 +137,18 @@ func applyEnvOverrides(cfg *Config) {
 	if v := os.Getenv("DOCKYARD_STACKS_DIR"); v != "" {
 		cfg.Compose.StacksDir = v
 	}
+	if v := os.Getenv("DOCKYARD_AUTH_USER"); v != "" {
+		cfg.Auth.Username = v
+	}
+	if v := os.Getenv("DOCKYARD_AUTH_PASS"); v != "" {
+		cfg.Auth.Password = v
+	}
 }
 
 func (c *Config) Addr() string {
 	return fmt.Sprintf("%s:%d", c.Web.Bind, c.Web.Port)
+}
+
+func (c *Config) AuthEnabled() bool {
+	return c.Auth.Username != "" && c.Auth.Password != ""
 }
