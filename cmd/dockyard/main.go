@@ -15,6 +15,7 @@ import (
 	"git.jdbnet.co.uk/jamie/dockyard/internal/docker"
 	"git.jdbnet.co.uk/jamie/dockyard/internal/engine"
 	"git.jdbnet.co.uk/jamie/dockyard/internal/tui"
+	"git.jdbnet.co.uk/jamie/dockyard/internal/updater"
 )
 
 var Version = "dev"
@@ -24,11 +25,16 @@ func main() {
 	headless := flag.Bool("headless", false, "run without TUI (requires --web)")
 	debugList := flag.Bool("debug-list", false, "list containers and exit")
 	showVersion := flag.Bool("version", false, "print version")
+	noUpdate := flag.Bool("noupdate", false, "skip checking for binary updates")
 	flag.Parse()
 
 	if *showVersion {
 		fmt.Println(Version)
 		return
+	}
+
+	if !*noUpdate && Version != "dev" {
+		updater.MaybeUpdate(Version)
 	}
 
 	configPath := "config.yaml"

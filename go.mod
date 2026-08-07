@@ -8,6 +8,7 @@ require (
 	github.com/charmbracelet/lipgloss v1.1.0
 	github.com/docker/docker v28.0.0+incompatible
 	github.com/gorilla/websocket v1.5.3
+	golang.org/x/mod v0.37.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 

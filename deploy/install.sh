@@ -30,11 +30,6 @@ if [[ ! -f "$CONFIG_DIR/config.yaml" ]]; then
   echo "Installed default config to $CONFIG_DIR/config.yaml"
 fi
 
-if ! id dockyard &>/dev/null; then
-  useradd --system --no-create-home --shell /usr/sbin/nologin dockyard || true
-fi
-usermod -aG docker dockyard 2>/dev/null || true
-
 install -m 644 "$SCRIPT_DIR/dockyard.service" "/etc/systemd/system/${SERVICE_NAME}.service"
 systemctl daemon-reload
 systemctl enable "$SERVICE_NAME"
