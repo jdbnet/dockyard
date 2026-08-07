@@ -7,7 +7,7 @@ COPY ui/ ./
 RUN npm run build
 
 # ── Stage 2: Build Go server ──
-FROM golang:1.23-alpine AS server
+FROM golang:1.26-alpine AS server
 WORKDIR /build
 COPY go.mod go.sum ./
 RUN go mod download
