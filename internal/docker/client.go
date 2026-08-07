@@ -116,6 +116,25 @@ func (c *Client) ListContainers(ctx context.Context, all bool) ([]ContainerSumma
 	return out, nil
 }
 
+// publicPortStrings formats published ports, deduplicating IPv4/IPv6 bindings
+// (Docker lists 0.0.0.0:8080 and [::]:8080 as separate entries).
+func publicPortStrings(ports []container.Port) []string {
+	out := make([]string, 0, len(ports))
+	seen := make(map[string]struct{})
+	for _, p := range ports {
+		if p.PublicPort == 0 {
+			continue
+		}
+		key := fmt.Sprintf("%d:%d/%s", p.PublicPort, p.PrivatePort, p.Type)
+		if _, ok := seen[key]; ok {
+			continue
+		}
+		seen[key] = struct{}{}
+		out = append(out, key)
+	}
+	return out
+}
+
 func mapContainer(ctr container.Summary) ContainerSummary {
 	name := ""
 	if len(ctr.Names) > 0 {
@@ -133,12 +152,7 @@ func mapContainer(ctr container.Summary) ContainerSummary {
 			health = "starting"
 		}
 	}
-	ports := make([]string, 0, len(ctr.Ports))
-	for _, p := range ctr.Ports {
-		if p.PublicPort > 0 {
-			ports = append(ports, fmt.Sprintf("%d:%d/%s", p.PublicPort, p.PrivatePort, p.Type))
-		}
-	}
+	ports := publicPortStrings(ctr.Ports)
 	shortID := ctr.ID
 	if len(shortID) > 12 {
 		shortID = shortID[:12]

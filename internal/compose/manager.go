@@ -26,6 +26,7 @@ type Stack struct {
 	Path           string `json:"path"`
 	ComposeFile    string `json:"compose_file"`
 	Managed        bool   `json:"managed"`
+	Editable       bool   `json:"editable"`
 	ContainerCount int    `json:"container_count"`
 	RunningCount   int    `json:"running_count"`
 }
@@ -73,6 +74,7 @@ func (m *Manager) List() ([]Stack, error) {
 			Path:        path,
 			ComposeFile: composeFile,
 			Managed:     true,
+			Editable:    true,
 		})
 	}
 	sort.Slice(stacks, func(i, j int) bool { return stacks[i].Name < stacks[j].Name })
@@ -198,6 +200,7 @@ func StackFromPath(name, path string) (Stack, error) {
 		Path:        path,
 		ComposeFile: composeFile,
 		Managed:     false,
+		Editable:    fileWritable(composeFile),
 	}, nil
 }
 

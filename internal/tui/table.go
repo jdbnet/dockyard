@@ -53,6 +53,18 @@ func networkCols() []colSpec {
 	}
 }
 
+func portCols() []colSpec {
+	return []colSpec{
+		{header: "HOST", min: 6, max: 8},
+		{header: "CTR", min: 6, max: 8},
+		{header: "PROTO", min: 5, max: 6},
+		{header: "CONTAINER", min: 12, max: 0},
+		{header: "STACK", min: 10, max: 0},
+		{header: "SERVICE", min: 10, max: 0},
+		{header: "STATE", min: 8, max: 10},
+	}
+}
+
 func colsForView(v viewKind) []colSpec {
 	switch v {
 	case viewStacks:
@@ -63,6 +75,8 @@ func colsForView(v viewKind) []colSpec {
 		return volumeCols()
 	case viewNetworks:
 		return networkCols()
+	case viewPorts:
+		return portCols()
 	default:
 		return containerCols()
 	}

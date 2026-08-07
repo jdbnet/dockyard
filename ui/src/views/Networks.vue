@@ -17,10 +17,9 @@ async function remove(id) {
 
 <template>
   <div class="space-y-4">
-    <h2 class="text-xl font-semibold">Networks</h2>
     <div class="card overflow-x-auto">
       <table class="w-full text-left text-sm">
-        <thead class="text-slate-500">
+        <thead class="text-muted">
           <tr>
             <th class="pb-2">Name</th>
             <th class="pb-2">Driver</th>
@@ -30,7 +29,7 @@ async function remove(id) {
           </tr>
         </thead>
         <tbody>
-          <tr v-for="n in networks" :key="n.id" class="border-t border-slate-800">
+          <tr v-for="n in networks" :key="n.id" class="table-row-hover">
             <td class="py-2">{{ n.name }}</td>
             <td class="py-2">{{ n.driver }}</td>
             <td class="py-2">{{ n.scope }}</td>
@@ -38,7 +37,7 @@ async function remove(id) {
             <td class="py-2">
               <button
                 v-if="!['bridge','host','none'].includes(n.name)"
-                class="btn-ghost text-xs text-red-400"
+                class="btn-ghost text-xs text-danger"
                 @click="remove(n.id)"
               >
                 Remove

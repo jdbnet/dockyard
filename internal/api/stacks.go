@@ -27,12 +27,12 @@ func (s *Server) handleListStacks(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleGetStackCompose(w http.ResponseWriter, r *http.Request) {
 	name := r.PathValue("name")
-	content, err := s.eng.ReadStackCompose(r.Context(), name)
+	info, err := s.eng.GetStackCompose(r.Context(), name)
 	if err != nil {
 		actionError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]string{"name": name, "content": content})
+	writeJSON(w, http.StatusOK, info)
 }
 
 func (s *Server) handleSaveStackCompose(w http.ResponseWriter, r *http.Request) {

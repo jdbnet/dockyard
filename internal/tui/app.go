@@ -31,6 +31,7 @@ const (
 	viewImages
 	viewVolumes
 	viewNetworks
+	viewPorts
 	viewLogs
 	viewInspect
 	viewHelp
@@ -63,8 +64,9 @@ type model struct {
 	helpOpen     bool
 
 	editMode  editMode
-	stackName string
-	stackNew  bool
+	stackName      string
+	stackNew       bool
+	stackEditable  bool
 	nameInput textinput.Model
 	composeTA textarea.Model
 }
@@ -145,6 +147,12 @@ func refreshRowsCmd(eng *engine.Engine, view viewKind) tea.Cmd {
 				return errLineMsg(err)
 			}
 			return rowsMsg(buildNetworkRows(list))
+		case viewPorts:
+			list, err := eng.Ports(ctx)
+			if err != nil {
+				return errLineMsg(err)
+			}
+			return rowsMsg(buildPortRows(list))
 		}
 		return nil
 	}
@@ -226,6 +234,33 @@ func buildNetworkRows(list []engine.Network) []rowItem {
 		rows = append(rows, rowItem{
 			id:   n.ID,
 			cols: []string{n.Name, n.Driver, n.Scope, fmt.Sprintf("%d", n.Containers)},
+		})
+	}
+	return rows
+}
+
+func buildPortRows(list []engine.PortBinding) []rowItem {
+	rows := make([]rowItem, 0, len(list))
+	for _, p := range list {
+		stack := p.ComposeProject
+		if stack == "" {
+			stack = "-"
+		}
+		service := p.ComposeService
+		if service == "" {
+			service = "-"
+		}
+		rows = append(rows, rowItem{
+			id: p.ContainerID,
+			cols: []string{
+				fmt.Sprintf("%d", p.HostPort),
+				fmt.Sprintf("%d", p.ContainerPort),
+				p.Protocol,
+				p.ContainerName,
+				stack,
+				service,
+				p.ContainerState,
+			},
 		})
 	}
 	return rows

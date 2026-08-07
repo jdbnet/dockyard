@@ -82,13 +82,36 @@ func (e *Engine) stackByName(ctx context.Context, name string) (Stack, error) {
 	return Stack{}, fmt.Errorf("stack %q not found", name)
 }
 
-func (e *Engine) ReadStackCompose(_ context.Context, name string) (string, error) {
-	stack, err := e.stackByName(context.Background(), name)
+// StackCompose is compose file content and edit permissions for a stack.
+type StackCompose struct {
+	Name     string `json:"name"`
+	Content  string `json:"content"`
+	Managed  bool   `json:"managed"`
+	Editable bool   `json:"editable"`
+	Path     string `json:"path"`
+}
+
+func (e *Engine) GetStackCompose(ctx context.Context, name string) (StackCompose, error) {
+	stack, err := e.stackByName(ctx, name)
 	if err != nil {
-		return "", err
+		return StackCompose{}, err
 	}
+	content, err := e.readStackContent(stack)
+	if err != nil {
+		return StackCompose{}, err
+	}
+	return StackCompose{
+		Name:     stack.Name,
+		Content:  content,
+		Managed:  stack.Managed,
+		Editable: stack.IsEditable(),
+		Path:     stack.Path,
+	}, nil
+}
+
+func (e *Engine) readStackContent(stack Stack) (string, error) {
 	if stack.Managed {
-		return e.stacks.Read(name)
+		return e.stacks.Read(stack.Name)
 	}
 	b, err := os.ReadFile(stack.ComposeFile)
 	if err != nil {
@@ -97,21 +120,41 @@ func (e *Engine) ReadStackCompose(_ context.Context, name string) (string, error
 	return string(b), nil
 }
 
+func (e *Engine) ReadStackCompose(ctx context.Context, name string) (string, error) {
+	info, err := e.GetStackCompose(ctx, name)
+	if err != nil {
+		return "", err
+	}
+	return info.Content, nil
+}
+
 func (e *Engine) SaveStackCompose(ctx context.Context, name, content string) error {
+	if err := compose.ValidateYAML(content); err != nil {
+		return err
+	}
 	stack, err := e.stackByName(ctx, name)
 	if err != nil {
 		return e.stacks.Create(name, content)
 	}
-	if !stack.Managed {
-		return fmt.Errorf("cannot edit external stack %q (copy to stacks dir first)", name)
+	if !stack.IsEditable() {
+		return fmt.Errorf("stack %q is read-only", name)
 	}
-	if err := e.stacks.Write(name, content); err != nil {
+	if stack.Managed {
+		if err := e.stacks.Write(name, content); err != nil {
+			return err
+		}
+		return e.refreshAll(ctx)
+	}
+	if err := os.WriteFile(stack.ComposeFile, []byte(content), 0o644); err != nil {
 		return err
 	}
 	return e.refreshAll(ctx)
 }
 
 func (e *Engine) CreateStack(ctx context.Context, name, content string, start bool) error {
+	if err := compose.ValidateYAML(content); err != nil {
+		return err
+	}
 	if err := e.stacks.Create(name, content); err != nil {
 		return err
 	}

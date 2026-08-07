@@ -128,10 +128,14 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case composeLoadMsg:
 		m.stackName = msg.name
 		m.stackNew = false
+		m.stackEditable = msg.editable
 		m.composeTA = m.initComposeEditor(m.width, m.height)
 		m.composeTA.SetValue(msg.content)
 		m.composeTA.Focus()
 		m.editMode = editCompose
+		if !msg.editable {
+			m.statusMsg = "read-only stack"
+		}
 		return m, textarea.Blink
 
 	case composeSavedMsg:
@@ -182,6 +186,7 @@ func (m model) updateNewStackName(msg tea.KeyMsg) (model, tea.Cmd) {
 		}
 		m.stackName = name
 		m.stackNew = true
+		m.stackEditable = true
 		m.composeTA = m.initComposeEditor(m.width, m.height)
 		m.composeTA.SetValue(newStackTemplate())
 		m.composeTA.Focus()
@@ -199,12 +204,9 @@ func (m model) updateComposeEditor(msg tea.KeyMsg) (model, tea.Cmd) {
 	case "esc":
 		return m.backToStacks()
 	case "ctrl+s":
-		if !m.stackNew {
-			sel := m.selected()
-			if sel != nil && sel.id != "" && !sel.stack.Managed {
-				m.errMsg = "external stacks are read-only"
-				return m, nil
-			}
+		if !m.stackNew && !m.stackEditable {
+			m.errMsg = "stack is read-only"
+			return m, nil
 		}
 		content := m.composeTA.Value()
 		name := m.stackName
@@ -223,6 +225,9 @@ func (m model) updateComposeEditor(msg tea.KeyMsg) (model, tea.Cmd) {
 			return composeSavedMsg{name: name, isNew: isNew}
 		}
 	default:
+		if !m.stackNew && !m.stackEditable {
+			return m, nil
+		}
 		var cmd tea.Cmd
 		m.composeTA, cmd = m.composeTA.Update(msg)
 		return m, cmd
@@ -264,6 +269,10 @@ func (m model) updateContainers(msg tea.KeyMsg) (model, tea.Cmd) {
 		m.view = viewStacks
 		m.cursor = 0
 		return m, refreshRowsCmd(m.eng, viewStacks)
+	case "p":
+		m.view = viewPorts
+		m.cursor = 0
+		return m, refreshRowsCmd(m.eng, viewPorts)
 	case "enter", "d":
 		return m, m.cmdInspect()
 	case "l":
@@ -466,6 +475,8 @@ func (m model) updateCommand(msg tea.KeyMsg) (model, tea.Cmd) {
 			m.view = viewVolumes
 		case "networks", "n":
 			m.view = viewNetworks
+		case "ports", "p":
+			m.view = viewPorts
 		case "quit", "q":
 			return m, tea.Quit
 		default:

@@ -35,6 +35,9 @@ func buildStackRows(stacks []engine.Stack) []rowItem {
 		if !s.Managed {
 			src = "external"
 		}
+		if s.IsEditable() {
+			src += "·edit"
+		}
 		rows = append(rows, rowItem{
 			id:   s.Name,
 			stack: s,
@@ -69,23 +72,32 @@ func (m *model) initComposeEditor(width, height int) textarea.Model {
 	ta := textarea.New()
 	ta.SetWidth(max(20, width-4))
 	ta.SetHeight(max(5, height-8))
-	ta.ShowLineNumbers = false
+	ta.ShowLineNumbers = true
 	return ta
 }
 
 func loadStackComposeCmd(eng *engine.Engine, name string) tea.Cmd {
 	return func() tea.Msg {
-		content, err := eng.ReadStackCompose(context.Background(), name)
+		info, err := eng.GetStackCompose(context.Background(), name)
 		if err != nil {
 			return errLineMsg(err)
 		}
-		return composeLoadMsg{name: name, content: content}
+		return composeLoadMsg{
+			name:     info.Name,
+			content:  info.Content,
+			editable: info.Editable,
+			managed:  info.Managed,
+			path:     info.Path,
+		}
 	}
 }
 
 type composeLoadMsg struct {
-	name    string
-	content string
+	name     string
+	content  string
+	editable bool
+	managed  bool
+	path     string
 }
 
 func saveStackCmd(eng *engine.Engine, name, content string, isNew, start bool) tea.Cmd {

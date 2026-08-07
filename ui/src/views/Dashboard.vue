@@ -42,29 +42,28 @@ async function act(id, action) {
 }
 
 function fmtStat(v) {
-  if (v == null || v === undefined || Number.isNaN(v)) return '—'
+  if (v == null || v === undefined || Number.isNaN(v)) return '-'
   return `${v.toFixed(1)}%`
 }
 </script>
 
 <template>
   <div class="space-y-4">
-    <div class="flex items-center justify-between">
-      <h2 class="text-xl font-semibold">Containers</h2>
+    <div class="page-toolbar">
       <button class="btn-ghost" @click="store.toggleFlat()">
         {{ store.flatView ? 'Compose view' : 'Flat view' }}
       </button>
     </div>
 
     <div v-for="project in projects" :key="project.name" class="card">
-      <h3 class="mb-3 text-sm font-medium uppercase tracking-wide text-slate-500">
+      <h3 class="mb-3 text-sm font-medium uppercase tracking-wide text-muted">
         {{ project.name }}
         <span class="ml-2 text-xs normal-case">({{ project.containers?.length ?? 0 }})</span>
       </h3>
 
       <div class="overflow-x-auto">
         <table class="w-full text-left text-sm">
-          <thead class="text-slate-500">
+          <thead class="text-muted">
             <tr>
               <th class="pb-2 pr-4">Name</th>
               <th class="pb-2 pr-4">Status</th>
@@ -79,7 +78,7 @@ function fmtStat(v) {
             <tr
               v-for="c in project.containers"
               :key="c.id"
-              class="border-t border-slate-800 hover:bg-canvas-inset-dark/50"
+              class="table-row-hover"
             >
               <td class="py-2 pr-4">
                 <button
@@ -94,10 +93,10 @@ function fmtStat(v) {
               </td>
               <td class="py-2 pr-4">{{ fmtStat(c.cpu_pct) }}</td>
               <td class="py-2 pr-4">{{ fmtStat(c.mem_pct) }}</td>
-              <td class="py-2 pr-4 text-slate-400">{{ c.uptime || '-' }}</td>
+              <td class="py-2 pr-4 text-muted">{{ c.uptime || '-' }}</td>
               <td class="py-2 pr-4">
                 <span v-if="c.restart_loop" class="badge badge-error">restart loop</span>
-                <span v-else class="text-slate-400">{{ c.health || '-' }}</span>
+                <span v-else class="text-muted">{{ c.health || '-' }}</span>
               </td>
               <td class="py-2 space-x-1">
                 <button class="btn-ghost text-xs" @click="act(c.id, 'start')">Start</button>
@@ -111,6 +110,6 @@ function fmtStat(v) {
       </div>
     </div>
 
-    <p v-if="!projects.length" class="text-slate-500">No containers found.</p>
+    <p v-if="!projects.length" class="text-muted">No containers found.</p>
   </div>
 </template>

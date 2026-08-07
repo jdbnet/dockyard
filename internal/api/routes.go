@@ -110,6 +110,15 @@ func (s *Server) handleListNetworks(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, list)
 }
 
+func (s *Server) handleListPorts(w http.ResponseWriter, r *http.Request) {
+	list, err := s.eng.Ports(r.Context())
+	if err != nil {
+		actionError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, list)
+}
+
 func streamLogs(ctx context.Context, eng *engine.Engine, id string, w io.Writer) error {
 	return eng.StreamLogs(ctx, id, docker.LogOptions{Tail: "100", Follow: true}, func(line string) error {
 		select {

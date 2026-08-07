@@ -57,10 +57,9 @@ async function pruneUnused() {
 
 <template>
   <div class="space-y-4">
-    <div class="flex items-center justify-between gap-4">
-      <h2 class="text-xl font-semibold">Images</h2>
+    <div class="page-toolbar">
       <button
-        class="btn-ghost text-sm text-amber-400 disabled:opacity-40"
+        class="btn-ghost text-sm text-warn-accent disabled:opacity-40"
         :disabled="unusedCount === 0 || pruning"
         @click="pruneUnused"
       >
@@ -69,7 +68,7 @@ async function pruneUnused() {
     </div>
     <div class="card overflow-x-auto">
       <table class="w-full text-left text-sm">
-        <thead class="text-slate-500">
+        <thead class="text-muted">
           <tr>
             <th class="pb-2">ID</th>
             <th class="pb-2">Tags</th>
@@ -80,7 +79,7 @@ async function pruneUnused() {
           </tr>
         </thead>
         <tbody>
-          <tr v-for="img in images" :key="img.id" class="border-t border-slate-800">
+          <tr v-for="img in images" :key="img.id" class="table-row-hover">
             <td class="py-2 font-mono text-xs">{{ img.short_id }}</td>
             <td class="py-2">{{ tag(img) }}</td>
             <td class="py-2">{{ fmtSize(img.size) }}</td>
@@ -89,7 +88,7 @@ async function pruneUnused() {
               <span v-if="img.unused" class="badge badge-warn">unused</span>
             </td>
             <td class="py-2">
-              <button class="btn-ghost text-xs text-red-400" @click="remove(img.id)">Remove</button>
+              <button class="btn-ghost text-xs text-danger" @click="remove(img.id)">Remove</button>
             </td>
           </tr>
         </tbody>

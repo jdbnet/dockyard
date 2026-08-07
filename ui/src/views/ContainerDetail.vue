@@ -52,7 +52,7 @@ function toggleAutoScroll() {
 }
 
 function fmtPct(v) {
-  if (v == null || Number.isNaN(v)) return '—'
+  if (v == null || Number.isNaN(v)) return '-'
   return `${v.toFixed(1)}%`
 }
 
@@ -138,53 +138,53 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div v-if="loading" class="text-slate-500">Loading...</div>
+  <div v-if="loading" class="text-muted">Loading...</div>
   <div v-else-if="container" class="space-y-6">
     <div class="flex flex-wrap items-center justify-between gap-4">
       <div>
-        <h2 class="text-2xl font-semibold">{{ container.name }}</h2>
-        <p class="text-sm text-slate-500">{{ container.image }}</p>
+        <h2 class="text-2xl font-semibold text-heading">{{ container.name }}</h2>
+        <p class="text-sm text-muted">{{ container.image }}</p>
       </div>
       <div class="flex gap-2">
         <button class="btn-primary" @click="act('start')">Start</button>
         <button class="btn-ghost" @click="act('stop')">Stop</button>
         <button class="btn-ghost" @click="act('restart')">Restart</button>
         <button class="btn-ghost" @click="act('update')">Update</button>
-        <button class="btn-ghost text-red-400" @click="remove">Remove</button>
+        <button class="btn-ghost text-danger" @click="remove">Remove</button>
       </div>
     </div>
 
     <div class="grid gap-4 md:grid-cols-2">
       <div class="card">
         <div class="mb-2 flex items-baseline justify-between">
-          <h3 class="text-sm text-slate-500">CPU</h3>
+          <h3 class="text-sm text-muted">CPU</h3>
           <span class="text-lg font-semibold text-accent">{{ fmtPct(liveStats.cpu_pct ?? container.cpu_pct) }}</span>
         </div>
         <div ref="chartEl" class="min-h-[160px]" />
-        <p v-if="!liveStats.cpu_pct && !container.cpu_pct" class="mt-2 text-xs text-slate-500">Collecting metrics…</p>
+        <p v-if="!liveStats.cpu_pct && !container.cpu_pct" class="mt-2 text-xs text-muted">Collecting metrics…</p>
       </div>
       <div class="card">
         <div class="mb-2 flex items-baseline justify-between">
-          <h3 class="text-sm text-slate-500">Memory</h3>
-          <span class="text-lg font-semibold text-sky-400">{{ fmtPct(liveStats.mem_pct ?? container.mem_pct) }}</span>
+          <h3 class="text-sm text-muted">Memory</h3>
+          <span class="text-lg font-semibold text-stat-secondary">{{ fmtPct(liveStats.mem_pct ?? container.mem_pct) }}</span>
         </div>
         <div ref="memChartEl" class="min-h-[160px]" />
-        <p v-if="!liveStats.mem_pct && !container.mem_pct" class="mt-2 text-xs text-slate-500">Collecting metrics…</p>
+        <p v-if="!liveStats.mem_pct && !container.mem_pct" class="mt-2 text-xs text-muted">Collecting metrics…</p>
       </div>
     </div>
 
     <div class="card grid gap-2 text-sm md:grid-cols-3">
-      <div><span class="text-slate-500">State:</span> {{ container.state }}</div>
-      <div><span class="text-slate-500">Health:</span> {{ container.health || '-' }}</div>
-      <div><span class="text-slate-500">Uptime:</span> {{ container.uptime || '-' }}</div>
-      <div><span class="text-slate-500">Stack:</span> {{ container.compose_project || '-' }}</div>
-      <div><span class="text-slate-500">Service:</span> {{ container.compose_service || '-' }}</div>
-      <div><span class="text-slate-500">Restarts:</span> {{ container.restart_count }}</div>
+      <div><span class="text-muted">State:</span> {{ container.state }}</div>
+      <div><span class="text-muted">Health:</span> {{ container.health || '-' }}</div>
+      <div><span class="text-muted">Uptime:</span> {{ container.uptime || '-' }}</div>
+      <div><span class="text-muted">Stack:</span> {{ container.compose_project || '-' }}</div>
+      <div><span class="text-muted">Service:</span> {{ container.compose_service || '-' }}</div>
+      <div><span class="text-muted">Restarts:</span> {{ container.restart_count }}</div>
     </div>
 
     <div class="card">
       <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <h3 class="text-sm font-medium text-slate-500">Logs</h3>
+        <h3 class="text-sm font-medium text-muted">Logs</h3>
         <div class="flex gap-2 text-xs">
           <button class="btn-ghost py-1" @click="logShowTS = !logShowTS">
             Timestamps: {{ logShowTS ? 'on' : 'off' }}
@@ -196,7 +196,7 @@ onUnmounted(() => {
       </div>
       <pre
         ref="logEl"
-        class="max-h-96 overflow-auto rounded-lg bg-canvas-dark p-3 text-xs text-slate-300"
+        class="log-panel"
         @scroll="onLogScroll"
       >{{ displayLogs || '(waiting for logs...)' }}</pre>
     </div>

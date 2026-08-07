@@ -95,6 +95,11 @@ export async function getNetworks() {
   return data
 }
 
+export async function getPorts() {
+  const { data } = await api.get('/ports')
+  return data
+}
+
 export async function removeImage(id) {
   await api.delete(`/images/${id}`)
 }

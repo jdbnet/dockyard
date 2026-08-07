@@ -104,6 +104,8 @@ func viewTitle(m model) string {
 		return "volumes"
 	case viewNetworks:
 		return "networks"
+	case viewPorts:
+		return "ports"
 	case viewLogs:
 		return "logs"
 	case viewInspect:
@@ -118,10 +120,8 @@ func (m model) renderComposeEditor(bodyHeight int) string {
 	hint := "ctrl+s save  esc back"
 	if m.stackNew {
 		hint += "  (new stack)"
-	} else if sel := m.selected(); sel != nil && sel.id != "" {
-		if !sel.stack.Managed {
-			hint = "read-only (external stack)  esc back"
-		}
+	} else if !m.stackEditable {
+		hint = "read-only  esc back"
 	}
 	b.WriteString(styleMuted().Render("  " + hint))
 	b.WriteString("\n")
@@ -248,14 +248,16 @@ func statusBar(m model) string {
 		return "e edit  u update  s up  S down  n new  x delete  j/k nav  esc/q back"
 	case viewImages:
 		return "x remove  P prune unused  j/k nav  R refresh  :cmd  /filter  ? help  q quit"
+	case viewPorts:
+		return "d inspect  j/k nav  R refresh  :cmd  /filter  ? help  q quit"
 	}
-	return ":cmd  /filter  j/k  d inspect  l logs  u update  s/S/r  x remove  c stacks  R refresh  ? help  q quit"
+	return ":cmd  /filter  j/k  d inspect  l logs  u update  s/S/r  x remove  c stacks  p ports  R refresh  ? help  q quit"
 }
 
 func helpText() string {
 	return `Dockyard TUI - keybindings
 
-  :containers :stacks :images :volumes :networks  Jump to view
+  :containers :stacks :images :volumes :networks :ports  Jump to view
   /           Filter current view
   j/k         Navigate
   d / Enter   Inspect container (containers view)
@@ -268,6 +270,7 @@ func helpText() string {
   x           Remove (confirm)
   P           Prune unused images (images view)
   c           Stacks view (compose files)
+  p           Ports view
   n           New stack (stacks view)
   e           Edit compose file (stacks view)
   R           Force refresh

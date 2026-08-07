@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import ComposeEditor from '@/components/ComposeEditor.vue'
 import {
   getStacks, createStack, stackUp, stackDown, stackUpdate, deleteStack,
 } from '@/api/client'
@@ -9,6 +10,7 @@ const stacks = ref([])
 const router = useRouter()
 const showNew = ref(false)
 const newName = ref('')
+const createError = ref('')
 const newContent = ref(`services:
   app:
     image: nginx:alpine
@@ -34,30 +36,37 @@ async function act(name, action) {
 
 async function submitNew() {
   if (!newName.value.trim()) return
+  createError.value = ''
   const start = confirm('Start stack after creating?')
-  await createStack(newName.value.trim(), newContent.value, start)
-  showNew.value = false
-  newName.value = ''
-  await refresh()
+  try {
+    await createStack(newName.value.trim(), newContent.value, start)
+    showNew.value = false
+    newName.value = ''
+    await refresh()
+  } catch (e) {
+    createError.value = e.response?.data?.error || e.message || 'Create failed'
+  }
 }
 </script>
 
 <template>
   <div class="space-y-4">
-    <div class="flex items-center justify-between">
-      <h2 class="text-xl font-semibold">Compose stacks</h2>
+    <div class="page-toolbar">
       <button class="btn-primary" @click="showNew = !showNew">{{ showNew ? 'Cancel' : 'New stack' }}</button>
     </div>
 
     <div v-if="showNew" class="card space-y-3">
       <input v-model="newName" class="input-field font-mono text-sm w-full max-w-sm" placeholder="stack-name" />
-      <textarea v-model="newContent" rows="12" class="input-field font-mono text-sm w-full" />
-      <button class="btn-primary" @click="submitNew">Create stack</button>
+      <ComposeEditor v-model="newContent" min-height="16rem" />
+      <div class="flex items-center gap-3">
+        <button class="btn-primary" @click="submitNew">Create stack</button>
+        <span v-if="createError" class="text-danger text-sm">{{ createError }}</span>
+      </div>
     </div>
 
     <div class="card overflow-x-auto">
       <table class="w-full text-left text-sm">
-        <thead class="text-slate-500">
+        <thead class="text-muted">
           <tr>
             <th class="pb-2">Name</th>
             <th class="pb-2">Running</th>
@@ -67,20 +76,23 @@ async function submitNew() {
           </tr>
         </thead>
         <tbody>
-          <tr v-for="s in stacks" :key="s.name" class="border-t border-slate-800">
+          <tr v-for="s in stacks" :key="s.name" class="table-row-hover">
             <td class="py-2">
               <button class="text-accent hover:underline" @click="router.push(`/stacks/${s.name}`)">
                 {{ s.name }}
               </button>
             </td>
             <td class="py-2">{{ s.running_count }}/{{ s.container_count }}</td>
-            <td class="py-2">{{ s.managed ? 'managed' : 'external' }}</td>
-            <td class="py-2 font-mono text-xs text-slate-400">{{ s.path }}</td>
+            <td class="py-2">
+              {{ s.managed ? 'managed' : 'external' }}
+              <span v-if="s.editable" class="text-muted"> · editable</span>
+            </td>
+            <td class="py-2 font-mono text-xs text-muted">{{ s.path }}</td>
             <td class="py-2 space-x-1">
               <button class="btn-ghost text-xs" @click="act(s.name, 'up')">Up</button>
               <button class="btn-ghost text-xs" @click="act(s.name, 'down')">Down</button>
               <button class="btn-ghost text-xs" @click="act(s.name, 'update')">Update</button>
-              <button v-if="s.managed" class="btn-ghost text-xs text-red-400" @click="act(s.name, 'delete')">Delete</button>
+              <button v-if="s.managed" class="btn-ghost text-xs text-danger" @click="act(s.name, 'delete')">Delete</button>
             </td>
           </tr>
         </tbody>

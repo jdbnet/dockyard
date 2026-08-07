@@ -32,23 +32,24 @@ async function login() {
 </script>
 
 <template>
-  <div class="flex min-h-screen items-center justify-center bg-canvas-dark px-4">
-    <div class="w-full max-w-md rounded-xl border border-slate-800 bg-canvas-subtle-dark p-8 shadow-xl">
+  <div class="flex min-h-screen items-center justify-center bg-surface px-4">
+    <div class="card w-full max-w-md p-8 shadow-xl">
       <div class="mb-6 text-center">
-        <h1 class="text-2xl font-semibold text-accent">Dockyard</h1>
-        <p class="mt-1 text-sm text-slate-500">Sign in to manage Docker</p>
+        <img src="/favicon.png" alt="" class="mx-auto mb-4 h-14 w-14 rounded-xl" width="56" height="56" />
+        <h1 class="text-2xl font-semibold text-heading">Dockyard</h1>
+        <p class="mt-1 text-sm text-muted">Sign in to manage Docker</p>
       </div>
 
       <form class="space-y-4" @submit.prevent="login">
-        <div v-if="error" class="rounded-lg border border-red-500/40 bg-red-900/20 px-3 py-2 text-center text-sm text-red-300">
+        <div v-if="error" class="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-center text-sm text-red-600 dark:text-red-300">
           {{ error }}
         </div>
         <div>
-          <label class="mb-1 block text-sm text-slate-400">Username</label>
+          <label class="mb-1 block text-sm text-muted">Username</label>
           <input v-model="username" type="text" required autofocus class="input-field" />
         </div>
         <div>
-          <label class="mb-1 block text-sm text-slate-400">Password</label>
+          <label class="mb-1 block text-sm text-muted">Password</label>
           <input v-model="password" type="password" required class="input-field" />
         </div>
         <button type="submit" class="btn-primary w-full py-2" :disabled="loading">

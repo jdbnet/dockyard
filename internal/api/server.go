@@ -95,6 +95,7 @@ func (s *Server) registerRoutes() {
 	s.mux.HandleFunc("GET /api/v1/volumes", s.handleListVolumes)
 	s.mux.HandleFunc("DELETE /api/v1/volumes/{name}", s.handleRemoveVolume)
 	s.mux.HandleFunc("GET /api/v1/networks", s.handleListNetworks)
+	s.mux.HandleFunc("GET /api/v1/ports", s.handleListPorts)
 	s.mux.HandleFunc("DELETE /api/v1/networks/{id}", s.handleRemoveNetwork)
 
 	s.mux.HandleFunc("GET /ws/events", s.handleWSEvents)
