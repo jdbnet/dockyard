@@ -14,6 +14,7 @@ const logAutoScroll = ref(true)
 const logShowTS = ref(true)
 const chartEl = ref(null)
 const memChartEl = ref(null)
+const liveStats = ref({ cpu_pct: null, mem_pct: null, mem_bytes: null })
 let cpuChart = null
 let memChart = null
 let statsWS = null
@@ -50,15 +51,33 @@ function toggleAutoScroll() {
   if (logAutoScroll.value) scrollLogsToBottom()
 }
 
+function fmtPct(v) {
+  if (v == null || Number.isNaN(v)) return '—'
+  return `${v.toFixed(1)}%`
+}
+
+function applyStatsPoints(points) {
+  if (points.length) {
+    liveStats.value = points[points.length - 1]
+  }
+  renderCharts(points)
+}
+
 async function load() {
   loading.value = true
   detail.value = await getContainer(route.params.id)
   loading.value = false
-  renderCharts(detail.value?.stats?.points ?? [])
+  await nextTick()
+  applyStatsPoints(detail.value?.stats?.points ?? [])
 }
 
 function renderCharts(points) {
   if (!chartEl.value || !memChartEl.value) return
+  if (!points.length) {
+    if (cpuChart) { cpuChart.destroy(); cpuChart = null }
+    if (memChart) { memChart.destroy(); memChart = null }
+    return
+  }
   const ts = points.map((p) => p.timestamp ? new Date(p.timestamp).getTime() / 1000 : 0)
   const cpu = points.map((p) => p.cpu_pct ?? 0)
   const mem = points.map((p) => p.mem_pct ?? 0)
@@ -80,7 +99,7 @@ function connectStreams() {
   statsWS = new WebSocket(wsURL(`/ws/stats?id=${encodeURIComponent(id)}`))
   statsWS.onmessage = (ev) => {
     const stats = JSON.parse(ev.data)
-    renderCharts(stats.points ?? [])
+    applyStatsPoints(stats.points ?? [])
   }
   logsWS = new WebSocket(wsURL(`/ws/logs/${encodeURIComponent(id)}`))
   logsWS.onmessage = (ev) => {
@@ -137,12 +156,20 @@ onUnmounted(() => {
 
     <div class="grid gap-4 md:grid-cols-2">
       <div class="card">
-        <h3 class="mb-2 text-sm text-slate-500">CPU</h3>
-        <div ref="chartEl" />
+        <div class="mb-2 flex items-baseline justify-between">
+          <h3 class="text-sm text-slate-500">CPU</h3>
+          <span class="text-lg font-semibold text-accent">{{ fmtPct(liveStats.cpu_pct ?? container.cpu_pct) }}</span>
+        </div>
+        <div ref="chartEl" class="min-h-[160px]" />
+        <p v-if="!liveStats.cpu_pct && !container.cpu_pct" class="mt-2 text-xs text-slate-500">Collecting metrics…</p>
       </div>
       <div class="card">
-        <h3 class="mb-2 text-sm text-slate-500">Memory</h3>
-        <div ref="memChartEl" />
+        <div class="mb-2 flex items-baseline justify-between">
+          <h3 class="text-sm text-slate-500">Memory</h3>
+          <span class="text-lg font-semibold text-sky-400">{{ fmtPct(liveStats.mem_pct ?? container.mem_pct) }}</span>
+        </div>
+        <div ref="memChartEl" class="min-h-[160px]" />
+        <p v-if="!liveStats.mem_pct && !container.mem_pct" class="mt-2 text-xs text-slate-500">Collecting metrics…</p>
       </div>
     </div>
 

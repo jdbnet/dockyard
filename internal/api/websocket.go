@@ -51,37 +51,46 @@ func (s *Server) handleWSStats(w http.ResponseWriter, r *http.Request) {
 	}
 	defer conn.Close()
 
+	ctx := r.Context()
 	id := r.URL.Query().Get("id")
+	if id != "" {
+		list, _ := s.eng.Containers(ctx)
+		id = matchContainerID(list, id)
+	}
+
+	sendStats := func() error {
+		if id != "" {
+			return conn.WriteJSON(s.eng.ContainerStats(id))
+		}
+		list, err := s.eng.Containers(ctx)
+		if err != nil {
+			return err
+		}
+		payload := make([]json.RawMessage, 0, len(list))
+		for _, c := range list {
+			b, _ := json.Marshal(map[string]any{
+				"container": c,
+				"stats":     s.eng.ContainerStats(c.ID),
+			})
+			payload = append(payload, b)
+		}
+		return conn.WriteJSON(payload)
+	}
+
+	if err := sendStats(); err != nil {
+		return
+	}
+
 	ticker := time.NewTicker(s.cfg.Stats.Interval.Duration)
 	defer ticker.Stop()
 
-	ctx := r.Context()
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			if id != "" {
-				stats := s.eng.ContainerStats(id)
-				if err := conn.WriteJSON(stats); err != nil {
-					return
-				}
-			} else {
-				list, err := s.eng.Containers(ctx)
-				if err != nil {
-					continue
-				}
-				payload := make([]json.RawMessage, 0, len(list))
-				for _, c := range list {
-					b, _ := json.Marshal(map[string]any{
-						"container": c,
-						"stats":     s.eng.ContainerStats(c.ID),
-					})
-					payload = append(payload, b)
-				}
-				if err := conn.WriteJSON(payload); err != nil {
-					return
-				}
+			if err := sendStats(); err != nil {
+				return
 			}
 		}
 	}

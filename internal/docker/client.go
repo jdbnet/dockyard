@@ -10,7 +10,6 @@ import (
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/events"
-	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/api/types/volume"
@@ -241,9 +240,42 @@ func (c *Client) ListImages(ctx context.Context) ([]ImageSummary, error) {
 	return out, nil
 }
 
-func (c *Client) PruneUnusedImages(ctx context.Context) (image.PruneReport, error) {
-	// Empty filters matches `docker image prune -a` (all unused images, not just dangling).
-	return c.cli.ImagesPrune(ctx, filters.NewArgs())
+func (c *Client) PruneUnusedImages(ctx context.Context) (PruneImagesReport, error) {
+	images, err := c.ListImages(ctx)
+	if err != nil {
+		return PruneImagesReport{}, err
+	}
+
+	report := PruneImagesReport{}
+	for _, img := range images {
+		if !img.Unused {
+			continue
+		}
+		report.Attempted++
+		_, err := c.cli.ImageRemove(ctx, img.ID, image.RemoveOptions{Force: true, PruneChildren: true})
+		if err != nil {
+			label := imageLabel(img)
+			report.Errors = append(report.Errors, fmt.Sprintf("%s (%s): %v", img.ShortID, label, err))
+			continue
+		}
+		report.Deleted++
+		report.SpaceReclaimed += uint64(img.Size)
+	}
+	return report, nil
+}
+
+func imageLabel(img ImageSummary) string {
+	if len(img.RepoTags) == 0 {
+		return "<none>"
+	}
+	return strings.Join(img.RepoTags, ", ")
+}
+
+type PruneImagesReport struct {
+	Deleted        int
+	SpaceReclaimed uint64
+	Attempted      int
+	Errors         []string
 }
 
 func (c *Client) ListVolumes(ctx context.Context) ([]VolumeSummary, error) {

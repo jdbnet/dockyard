@@ -333,7 +333,14 @@ func (m model) updateImages(msg tea.KeyMsg) (model, tea.Cmd) {
 					if err != nil {
 						return errLineMsg(err)
 					}
-					return statusLineMsg(fmt.Sprintf("pruned %d image(s), reclaimed %s", result.Deleted, fmtSize(int64(result.SpaceReclaimed))))
+					msg := fmt.Sprintf("pruned %d/%d image(s), reclaimed %s", result.Deleted, result.Attempted, fmtSize(int64(result.SpaceReclaimed)))
+					if len(result.Errors) > 0 {
+						if result.Deleted == 0 {
+							return errLineMsg(fmt.Errorf("%s: %s", msg, result.Errors[0]))
+						}
+						msg += fmt.Sprintf("; %d failed: %s", len(result.Errors), result.Errors[0])
+					}
+					return statusLineMsg(msg)
 				}
 			},
 		}

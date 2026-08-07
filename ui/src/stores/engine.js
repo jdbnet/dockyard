@@ -7,6 +7,7 @@ export const useEngineStore = defineStore('engine', {
     flatView: false,
     connected: false,
     lastEvent: null,
+    eventsWS: null,
   }),
   actions: {
     async fetch() {
@@ -18,10 +19,13 @@ export const useEngineStore = defineStore('engine', {
       }
     },
     connectEvents() {
+      if (this.eventsWS) return
       const ws = new WebSocket(wsURL('/ws/events'))
+      this.eventsWS = ws
       ws.onopen = () => { this.connected = true }
       ws.onclose = () => {
         this.connected = false
+        this.eventsWS = null
         setTimeout(() => this.connectEvents(), 3000)
       }
       ws.onmessage = (ev) => {

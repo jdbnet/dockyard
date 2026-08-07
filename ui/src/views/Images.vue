@@ -39,8 +39,16 @@ async function pruneUnused() {
   pruning.value = true
   try {
     const result = await pruneUnusedImages()
-    alert(`Pruned ${result.deleted} image(s), reclaimed ${fmtSize(result.space_reclaimed)}`)
+    let msg = `Pruned ${result.deleted} of ${result.attempted} image(s), reclaimed ${fmtSize(result.space_reclaimed)}`
+    if (result.errors?.length) {
+      msg += `\n\nFailed to remove:\n${result.errors.join('\n')}`
+    } else if (result.deleted === 0 && result.attempted > 0) {
+      msg += '\n\nNo images were removed.'
+    }
+    alert(msg)
     await refresh()
+  } catch (err) {
+    alert(err.response?.data?.error || err.message || 'Prune failed')
   } finally {
     pruning.value = false
   }

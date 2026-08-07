@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useEngineStore } from '@/stores/engine'
 import { containerAction, updateContainer } from '@/api/client'
@@ -7,6 +7,12 @@ import Sparkline from '@/components/Sparkline.vue'
 
 const store = useEngineStore()
 const router = useRouter()
+
+onMounted(() => {
+  if (store.composeProjects.length === 0) {
+    store.fetch()
+  }
+})
 
 const projects = computed(() => {
   if (store.flatView) {
@@ -33,6 +39,11 @@ async function act(id, action) {
     await containerAction(id, action)
   }
   await store.fetch()
+}
+
+function fmtStat(v) {
+  if (v == null || v === undefined || Number.isNaN(v)) return '—'
+  return `${v.toFixed(1)}%`
 }
 </script>
 
@@ -81,8 +92,8 @@ async function act(id, action) {
               <td class="py-2 pr-4">
                 <span class="badge" :class="statusBadge(c)">{{ c.state }}</span>
               </td>
-              <td class="py-2 pr-4">{{ c.cpu_pct?.toFixed(1) }}%</td>
-              <td class="py-2 pr-4">{{ c.mem_pct?.toFixed(1) }}%</td>
+              <td class="py-2 pr-4">{{ fmtStat(c.cpu_pct) }}</td>
+              <td class="py-2 pr-4">{{ fmtStat(c.mem_pct) }}</td>
               <td class="py-2 pr-4 text-slate-400">{{ c.uptime || '-' }}</td>
               <td class="py-2 pr-4">
                 <span v-if="c.restart_loop" class="badge badge-error">restart loop</span>

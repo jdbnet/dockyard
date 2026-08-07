@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"strings"
 	"sync"
 	"time"
 
@@ -32,6 +33,7 @@ type dockerStatsJSON struct {
 			TotalUsage uint64 `json:"total_usage"`
 		} `json:"cpu_usage"`
 		SystemUsage uint64 `json:"system_cpu_usage"`
+		OnlineCPUs  uint32 `json:"online_cpus"`
 	} `json:"cpu_stats"`
 	PreCPUStats struct {
 		CPUUsage struct {
@@ -236,6 +238,17 @@ func (e *Engine) pollStats(ctx context.Context) {
 
 func (e *Engine) collectStats(ctx context.Context) {
 	containers := e.store.containersSnapshot()
+	if len(containers) == 0 {
+		list, err := e.docker.ListContainers(ctx, true)
+		if err != nil {
+			return
+		}
+		for _, c := range list {
+			if c.State == "running" {
+				containers = append(containers, Container{ID: c.ID, State: c.State})
+			}
+		}
+	}
 	for _, c := range containers {
 		if c.State != "running" {
 			continue
@@ -277,10 +290,14 @@ func (e *Engine) collectStats(ctx context.Context) {
 func calcCPUPct(s dockerStatsJSON) float64 {
 	cpuDelta := float64(s.CPUStats.CPUUsage.TotalUsage - s.PreCPUStats.CPUUsage.TotalUsage)
 	systemDelta := float64(s.CPUStats.SystemUsage - s.PreCPUStats.SystemUsage)
-	if systemDelta > 0 && cpuDelta > 0 {
-		return (cpuDelta / systemDelta) * 100.0
+	if systemDelta <= 0 || cpuDelta < 0 {
+		return 0
 	}
-	return 0
+	cpus := float64(s.CPUStats.OnlineCPUs)
+	if cpus == 0 {
+		cpus = 1
+	}
+	return (cpuDelta / systemDelta) * cpus * 100.0
 }
 
 func calcMemPct(s dockerStatsJSON) float64 {
@@ -300,8 +317,21 @@ func (e *Engine) ComposeProjects(_ context.Context) ([]ComposeProject, error) {
 	return groupComposeProjects(e.store.containersSnapshot()), nil
 }
 
+func (e *Engine) resolveContainerID(id string) string {
+	for _, c := range e.store.containersSnapshot() {
+		if c.ID == id || c.ShortID == id || strings.EqualFold(c.Name, id) {
+			return c.ID
+		}
+	}
+	return id
+}
+
 func (e *Engine) ContainerStats(id string) StatsSeries {
-	return e.stats.series(id)
+	return e.stats.series(e.resolveContainerID(id))
+}
+
+func (e *Engine) ContainerLatestStats(id string) (StatPoint, bool) {
+	return e.stats.latest(e.resolveContainerID(id))
 }
 
 func (e *Engine) Images(_ context.Context) ([]Image, error) {
@@ -371,8 +401,10 @@ func (e *Engine) RemoveImage(ctx context.Context, id string, force bool) error {
 }
 
 type PruneImagesResult struct {
-	Deleted        int    `json:"deleted"`
-	SpaceReclaimed uint64 `json:"space_reclaimed"`
+	Deleted        int      `json:"deleted"`
+	SpaceReclaimed uint64   `json:"space_reclaimed"`
+	Attempted      int      `json:"attempted"`
+	Errors         []string `json:"errors,omitempty"`
 }
 
 func (e *Engine) PruneUnusedImages(ctx context.Context) (PruneImagesResult, error) {
@@ -385,8 +417,10 @@ func (e *Engine) PruneUnusedImages(ctx context.Context) (PruneImagesResult, erro
 	}
 	e.broadcast(Event{Type: "images", Action: "prune", Timestamp: time.Now()})
 	return PruneImagesResult{
-		Deleted:        len(report.ImagesDeleted),
+		Deleted:        report.Deleted,
 		SpaceReclaimed: report.SpaceReclaimed,
+		Attempted:      report.Attempted,
+		Errors:         report.Errors,
 	}, nil
 }
 

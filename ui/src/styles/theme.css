@@ -8,12 +8,18 @@
   --color-canvas-inset-dark: #21262d;
 }
 
+@layer base {
+  button:not(:disabled) {
+    @apply cursor-pointer;
+  }
+}
+
 @layer components {
   .btn-primary {
-    @apply inline-flex items-center justify-center rounded-lg bg-accent px-3 py-1.5 text-sm font-medium text-[#0f1117] hover:bg-accent-muted transition;
+    @apply inline-flex items-center justify-center rounded-lg bg-accent px-3 py-1.5 text-sm font-medium text-[#0f1117] hover:bg-accent-muted transition cursor-pointer disabled:cursor-not-allowed;
   }
   .btn-ghost {
-    @apply inline-flex items-center justify-center rounded-lg border border-slate-700 px-3 py-1.5 text-sm hover:border-accent hover:text-accent transition;
+    @apply inline-flex items-center justify-center rounded-lg border border-slate-700 px-3 py-1.5 text-sm hover:border-accent hover:text-accent transition cursor-pointer disabled:cursor-not-allowed;
   }
   .card {
     @apply rounded-xl border border-slate-800 bg-canvas-subtle-dark p-4;

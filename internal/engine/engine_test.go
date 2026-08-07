@@ -47,6 +47,34 @@ func TestFormatBytes(t *testing.T) {
 	}
 }
 
+func TestResolveContainerID(t *testing.T) {
+	e := &Engine{
+		store: newStore(),
+	}
+	e.store.setContainers([]Container{
+		{ID: "sha256:abc123full", ShortID: "abc123full", Name: "web"},
+	})
+	if got := e.resolveContainerID("abc123full"); got != "sha256:abc123full" {
+		t.Fatalf("short id: got %q", got)
+	}
+	if got := e.resolveContainerID("web"); got != "sha256:abc123full" {
+		t.Fatalf("name: got %q", got)
+	}
+}
+
+func TestCalcCPUPct(t *testing.T) {
+	var s dockerStatsJSON
+	s.CPUStats.CPUUsage.TotalUsage = 200_000_000
+	s.CPUStats.SystemUsage = 1_000_000_000
+	s.CPUStats.OnlineCPUs = 4
+	s.PreCPUStats.CPUUsage.TotalUsage = 100_000_000
+	s.PreCPUStats.SystemUsage = 900_000_000
+	got := calcCPUPct(s)
+	if got <= 0 {
+		t.Fatalf("expected positive cpu pct, got %f", got)
+	}
+}
+
 func TestGroupComposeProjects(t *testing.T) {
 	containers := []Container{
 		{Name: "b", ComposeProject: "stack", ComposeService: "api"},
