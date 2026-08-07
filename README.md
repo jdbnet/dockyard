@@ -1,8 +1,11 @@
-# Dockyard
+<div align="center">
+  <img src="ui/public/favicon.png" alt="Dockyard" width="128" />
 
-Local-first Docker environment manager for Linux. A single static binary with a k9s-style TUI (default) and an optional embedded Vue web UI.
+  # Dockyard
 
-Replaces Portainer/Dockge for homelab use - talks directly to `/var/run/docker.sock` via the official Docker SDK.
+  Local-first Docker environment manager for Linux. A single static binary with a k9s-style TUI (default) and an optional embedded Vue web UI.
+
+</div>
 
 ## Features
 
@@ -12,6 +15,8 @@ Replaces Portainer/Dockge for homelab use - talks directly to `/var/run/docker.s
 - **Live stats** - background poller with ring-buffer cache for sparklines and graphs
 - **Event stream** - Docker events for real-time state changes
 - **Restart-loop detection** - flags containers restarting repeatedly
+
+Replaces Portainer/Dockge for homelab use - talks directly to `/var/run/docker.sock` via the official Docker SDK.
 
 ## Quick start
 
@@ -133,4 +138,4 @@ cd ui && npm run dev
 
 ## License
 
-MIT
+[MIT](LICENSE)
