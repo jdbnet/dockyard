@@ -1,0 +1,63 @@
+version: 2
+
+project_name: dockyard
+
+before:
+  hooks:
+    - go mod tidy
+    - bash -c 'cd ui && (npm ci --no-audit --no-fund 2>/dev/null || npm install --no-audit --no-fund) && npm run build'
+
+builds:
+  - id: dockyard
+    main: ./cmd/dockyard
+    binary: dockyard
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+      - -X main.Version={{.Version}}
+
+archives:
+  - id: binaries
+    ids:
+      - dockyard
+    format: binary
+    name_template: "dockyard-{{ .Arch }}"
+
+nfpms:
+  - id: dockyard
+    package_name: dockyard
+    ids:
+      - dockyard
+    vendor: JDB Net
+    homepage: https://github.com/jdbnet/dockyard
+    maintainer: Jamie <jamie@jdbnet.co.uk>
+    description: |-
+      Local-first Docker environment manager for Linux.
+      Dockyard provides a k9s-style TUI and optional embedded Vue web UI
+      for managing Docker containers and compose stacks.
+    formats:
+      - deb
+    bindir: /usr/local/bin
+    file_name_template: "dockyard_{{ .Version }}_{{ .Arch }}"
+    contents:
+      - src: deploy/dockyard.service
+        dst: /lib/systemd/system/dockyard.service
+      - src: config.yaml
+        dst: /etc/dockyard/config.yaml
+        type: config|noreplace
+    deb:
+      compression: gzip
+
+changelog:
+  disable: true
+
+release:
+  github:
+    owner: jdbnet
+    name: dockyard

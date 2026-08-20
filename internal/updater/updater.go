@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	defaultUpdateBaseURL = "https://apps.jdbnet.co.uk"
+	defaultUpdateBaseURL = "https://github.com/jdbnet/dockyard/releases/latest/download"
 	etagFileName         = ".dockyard-etag"
 	downloadTimeout      = 2 * time.Minute
 	headTimeout          = 30 * time.Second
