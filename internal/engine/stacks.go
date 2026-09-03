@@ -54,19 +54,38 @@ func (e *Engine) Stacks(ctx context.Context) ([]Stack, error) {
 		if seen[project] {
 			continue
 		}
+		if err := e.external.Remember(project, wd); err != nil {
+			return nil, fmt.Errorf("remember external stack %q: %w", project, err)
+		}
 		ext, err := compose.StackFromPath(project, wd)
 		if err != nil {
 			continue
 		}
-		if n, ok := counts[project]; ok {
-			ext.ContainerCount = n.total
-			ext.RunningCount = n.running
+		applyStackCounts(&ext, counts[project].total, counts[project].running)
+		out = append(out, ext)
+		seen[project] = true
+	}
+
+	for _, entry := range e.external.List() {
+		if seen[entry.Project] {
+			continue
 		}
+		ext, err := compose.StackFromPath(entry.Project, entry.Path)
+		if err != nil {
+			_ = e.external.Forget(entry.Project)
+			continue
+		}
+		applyStackCounts(&ext, counts[entry.Project].total, counts[entry.Project].running)
 		out = append(out, ext)
 	}
 
 	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
 	return out, nil
+}
+
+func applyStackCounts(s *Stack, total, running int) {
+	s.ContainerCount = total
+	s.RunningCount = running
 }
 
 func (e *Engine) stackByName(ctx context.Context, name string) (Stack, error) {

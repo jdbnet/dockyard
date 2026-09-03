@@ -16,15 +16,16 @@ import (
 )
 
 type Engine struct {
-	cfg     *config.Config
-	docker  *docker.Client
-	stacks  *compose.Manager
-	store   *store
-	stats   *statsCache
-	tracker *restartTracker
-	subMu   sync.RWMutex
-	subs    map[chan Event]struct{}
-	cancel  context.CancelFunc
+	cfg      *config.Config
+	docker   *docker.Client
+	stacks   *compose.Manager
+	external *compose.ExternalRegistry
+	store    *store
+	stats    *statsCache
+	tracker  *restartTracker
+	subMu    sync.RWMutex
+	subs     map[chan Event]struct{}
+	cancel   context.CancelFunc
 }
 
 type dockerStatsJSON struct {
@@ -56,14 +57,19 @@ func New(cfg *config.Config, dc *docker.Client) (*Engine, error) {
 	if err != nil {
 		return nil, fmt.Errorf("compose stacks: %w", err)
 	}
+	external, err := compose.NewExternalRegistry(cfg.Compose.StacksDir)
+	if err != nil {
+		return nil, fmt.Errorf("external stacks registry: %w", err)
+	}
 	return &Engine{
-		cfg:     cfg,
-		docker:  dc,
-		stacks:  stacks,
-		store:   newStore(),
-		stats:   newStatsCache(),
-		tracker: newRestartTracker(cfg.RestartLoop.Threshold, cfg.RestartLoop.Window.Duration),
-		subs:    make(map[chan Event]struct{}),
+		cfg:      cfg,
+		docker:   dc,
+		stacks:   stacks,
+		external: external,
+		store:    newStore(),
+		stats:    newStatsCache(),
+		tracker:  newRestartTracker(cfg.RestartLoop.Threshold, cfg.RestartLoop.Window.Duration),
+		subs:     make(map[chan Event]struct{}),
 	}, nil
 }
 
