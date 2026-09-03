@@ -20,18 +20,13 @@ Replaces Portainer/Dockge for homelab use - talks directly to `/var/run/docker.s
 
 ## Quick start
 
-### Build
+### Installation
+
+Install from [Releases](https://github.com/jdbnet/dockyard/releases) or our APT repo...
 
 ```bash
-# Backend only (TUI works without web assets)
-go build -o dockyard ./cmd/dockyard
-
-# Full binary with embedded web UI
-cd ui && npm install && npm run build && cd ..
-go build -o dockyard ./cmd/dockyard
-
-# Or for ARM64...
-CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -ldflags="-s -w" -o dockyard-arm64 ./cmd/dockyard
+curl -fsSL https://apt.jdbnet.co.uk/install/stable.sh | sudo bash
+sudo apt install dockyard
 ```
 
 ### Run
