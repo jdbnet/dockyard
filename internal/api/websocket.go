@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"git.jdbnet.co.uk/jamie/dockyard/internal/docker"
-	"git.jdbnet.co.uk/jamie/dockyard/ui"
+	"github.com/jdbnet/dockyard/internal/docker"
+	"github.com/jdbnet/dockyard/ui"
 	"github.com/gorilla/websocket"
 )
 

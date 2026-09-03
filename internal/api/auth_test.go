@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"git.jdbnet.co.uk/jamie/dockyard/internal/config"
+	"github.com/jdbnet/dockyard/internal/config"
 )
 
 func testConfig(auth bool) *config.Config {

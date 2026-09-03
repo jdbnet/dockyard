@@ -7,8 +7,8 @@ import (
 	"net/http"
 	"strings"
 
-	"git.jdbnet.co.uk/jamie/dockyard/internal/docker"
-	"git.jdbnet.co.uk/jamie/dockyard/internal/engine"
+	"github.com/jdbnet/dockyard/internal/docker"
+	"github.com/jdbnet/dockyard/internal/engine"
 )
 
 func writeJSON(w http.ResponseWriter, status int, v any) {

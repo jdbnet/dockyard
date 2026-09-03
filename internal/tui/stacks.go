@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"git.jdbnet.co.uk/jamie/dockyard/internal/compose"
-	"git.jdbnet.co.uk/jamie/dockyard/internal/engine"
+	"github.com/jdbnet/dockyard/internal/compose"
+	"github.com/jdbnet/dockyard/internal/engine"
 	"github.com/charmbracelet/bubbles/textarea"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"

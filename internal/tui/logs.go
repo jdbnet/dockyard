@@ -4,8 +4,8 @@ import (
 	"context"
 	"strings"
 
-	"git.jdbnet.co.uk/jamie/dockyard/internal/docker"
-	"git.jdbnet.co.uk/jamie/dockyard/internal/engine"
+	"github.com/jdbnet/dockyard/internal/docker"
+	"github.com/jdbnet/dockyard/internal/engine"
 	tea "github.com/charmbracelet/bubbletea"
 )
 

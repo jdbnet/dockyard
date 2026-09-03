@@ -8,8 +8,8 @@ import (
 	"net/http"
 	"time"
 
-	"git.jdbnet.co.uk/jamie/dockyard/internal/config"
-	"git.jdbnet.co.uk/jamie/dockyard/internal/engine"
+	"github.com/jdbnet/dockyard/internal/config"
+	"github.com/jdbnet/dockyard/internal/engine"
 )
 
 const sessionCookieName = "dockyard_session"

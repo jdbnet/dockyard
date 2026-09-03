@@ -10,13 +10,12 @@ import (
 	"syscall"
 	"time"
 
-	"git.jdbnet.co.uk/jamie/dockyard/internal/api"
-	"git.jdbnet.co.uk/jamie/dockyard/internal/config"
-	"git.jdbnet.co.uk/jamie/dockyard/internal/docker"
-	"git.jdbnet.co.uk/jamie/dockyard/internal/engine"
-	"git.jdbnet.co.uk/jamie/dockyard/internal/tui"
-	"git.jdbnet.co.uk/jamie/dockyard/internal/updater"
-	"git.jdbnet.co.uk/jamie/dockyard/internal/version"
+	"github.com/jdbnet/dockyard/internal/api"
+	"github.com/jdbnet/dockyard/internal/config"
+	"github.com/jdbnet/dockyard/internal/docker"
+	"github.com/jdbnet/dockyard/internal/engine"
+	"github.com/jdbnet/dockyard/internal/tui"
+	"github.com/jdbnet/dockyard/internal/version"
 )
 
 func main() {
@@ -24,16 +23,11 @@ func main() {
 	headless := flag.Bool("headless", false, "run without TUI (requires --web)")
 	debugList := flag.Bool("debug-list", false, "list containers and exit")
 	showVersion := flag.Bool("version", false, "print version")
-	noUpdate := flag.Bool("noupdate", false, "skip checking for binary updates")
 	flag.Parse()
 
 	if *showVersion {
 		fmt.Println(version.Version)
 		return
-	}
-
-	if !*noUpdate && version.Version != "dev" {
-		updater.MaybeUpdate(version.Version)
 	}
 
 	configPath := "config.yaml"

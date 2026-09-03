@@ -1,4 +1,4 @@
-module git.jdbnet.co.uk/jamie/dockyard
+module github.com/jdbnet/dockyard
 
 go 1.26.5
 

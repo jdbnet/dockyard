@@ -20,7 +20,7 @@ builds:
       - arm64
     ldflags:
       - -s -w
-      - -X git.jdbnet.co.uk/jamie/dockyard/internal/version.Version={{.Version}}
+      - -X github.com/jdbnet/dockyard/internal/version.Version={{.Version}}
 
 archives:
   - id: binaries

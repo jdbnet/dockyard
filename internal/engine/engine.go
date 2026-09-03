@@ -10,9 +10,9 @@ import (
 	"sync"
 	"time"
 
-	"git.jdbnet.co.uk/jamie/dockyard/internal/compose"
-	"git.jdbnet.co.uk/jamie/dockyard/internal/config"
-	"git.jdbnet.co.uk/jamie/dockyard/internal/docker"
+	"github.com/jdbnet/dockyard/internal/compose"
+	"github.com/jdbnet/dockyard/internal/config"
+	"github.com/jdbnet/dockyard/internal/docker"
 )
 
 type Engine struct {

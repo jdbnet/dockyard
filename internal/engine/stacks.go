@@ -6,8 +6,8 @@ import (
 	"os"
 	"sort"
 
-	"git.jdbnet.co.uk/jamie/dockyard/internal/compose"
-	"git.jdbnet.co.uk/jamie/dockyard/internal/docker"
+	"github.com/jdbnet/dockyard/internal/compose"
+	"github.com/jdbnet/dockyard/internal/docker"
 )
 
 // Stack is a compose stack (alias for API consumers).

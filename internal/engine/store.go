@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"git.jdbnet.co.uk/jamie/dockyard/internal/docker"
+	"github.com/jdbnet/dockyard/internal/docker"
 )
 
 type store struct {
