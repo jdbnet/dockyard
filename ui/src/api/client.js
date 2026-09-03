@@ -18,6 +18,11 @@ api.interceptors.response.use(
 
 export default api
 
+export async function getHealth() {
+  const { data } = await api.get('/health')
+  return data
+}
+
 export async function getContainers(flat = false) {
   const url = flat ? '/containers' : '/compose'
   const { data } = await api.get(url)

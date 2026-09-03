@@ -16,9 +16,8 @@ import (
 	"git.jdbnet.co.uk/jamie/dockyard/internal/engine"
 	"git.jdbnet.co.uk/jamie/dockyard/internal/tui"
 	"git.jdbnet.co.uk/jamie/dockyard/internal/updater"
+	"git.jdbnet.co.uk/jamie/dockyard/internal/version"
 )
-
-var Version = "dev"
 
 func main() {
 	web := flag.Bool("web", false, "enable HTTP/WebSocket server")
@@ -29,12 +28,12 @@ func main() {
 	flag.Parse()
 
 	if *showVersion {
-		fmt.Println(Version)
+		fmt.Println(version.Version)
 		return
 	}
 
-	if !*noUpdate && Version != "dev" {
-		updater.MaybeUpdate(Version)
+	if !*noUpdate && version.Version != "dev" {
+		updater.MaybeUpdate(version.Version)
 	}
 
 	configPath := "config.yaml"
@@ -84,7 +83,7 @@ func main() {
 
 	var srv *api.Server
 	if cfg.Web.Enabled {
-		srv = api.NewServer(cfg, eng)
+		srv = api.NewServer(cfg, eng, version.Version)
 		go func() {
 			log.Printf("web UI listening on http://%s", cfg.Addr())
 			if err := srv.Start(); err != nil {
@@ -97,7 +96,7 @@ func main() {
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 
 	if !*headless {
-		if err := tui.Run(ctx, eng, cfg); err != nil {
+		if err := tui.Run(ctx, eng, cfg, version.Version); err != nil {
 			log.Printf("tui: %v", err)
 		}
 		cancel()
@@ -114,7 +113,7 @@ func main() {
 		log.Fatal("headless mode requires --web")
 	}
 
-	log.Printf("dockyard %s running headless on http://%s", Version, cfg.Addr())
+	log.Printf("dockyard %s running headless on http://%s", version.Version, cfg.Addr())
 	<-sigCh
 	cancel()
 	if srv != nil {

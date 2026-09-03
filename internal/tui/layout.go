@@ -47,7 +47,7 @@ func scrollableLines(m model, raw []string) []string {
 }
 
 func (m model) contentHeight() int {
-	h := m.height - 4
+	h := m.height - 2 // header + footer
 	if m.confirm != nil {
 		h--
 	}
@@ -92,7 +92,7 @@ func (m model) fillHeight(content string, height int) string {
 	if len(lines) > height {
 		lines = lines[:height]
 	}
-	lineStyle := lipgloss.NewStyle().Background(colorBg).Width(m.width)
+	lineStyle := lipgloss.NewStyle().Width(m.width)
 	padded := make([]string, height)
 	for i := 0; i < height; i++ {
 		line := ""

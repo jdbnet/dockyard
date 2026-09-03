@@ -25,9 +25,9 @@ func TestComputeWidthsUsesTerminalWidth(t *testing.T) {
 	rows := []rowItem{{
 		cols: []string{"my-stack", "1/2", "managed", "/home/jamie/stacks/my-stack"},
 	}}
-	widths := computeWidths(specs, rows, 120)
-	if tableWidth(widths) < 120 {
-		t.Fatalf("expected table to use terminal width, got %d (widths=%v)", tableWidth(widths), widths)
+	widths := computeWidths(specs, rows, 118)
+	if tableLineWidth(widths) < 118 {
+		t.Fatalf("expected table to use content width, got %d (widths=%v)", tableLineWidth(widths), widths)
 	}
 	if widths[0] < len("my-stack") {
 		t.Fatalf("NAME column too narrow: %d", widths[0])

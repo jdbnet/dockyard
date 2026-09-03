@@ -443,6 +443,16 @@ func (m model) updateCommand(msg tea.KeyMsg) (model, tea.Cmd) {
 	case "esc":
 		m.commandMode = false
 		return m, nil
+	case "tab":
+		if suffix := execSuggestion(m.commandInput); suffix != "" {
+			m.commandInput += suffix
+			return m, nil
+		}
+		_, suffix := commandSuggestion(m.commandInput)
+		if suffix != "" {
+			m.commandInput += suffix
+		}
+		return m, nil
 	case "enter":
 		m.commandMode = false
 		cmd := strings.TrimSpace(strings.TrimPrefix(m.commandInput, ":"))
@@ -464,26 +474,16 @@ func (m model) updateCommand(msg tea.KeyMsg) (model, tea.Cmd) {
 				return statusLineMsg("exec ok")
 			}
 		}
-		switch cmd {
-		case "containers":
-			m.view = viewContainers
-		case "stacks", "compose", "c":
-			m.view = viewStacks
-		case "images", "i":
-			m.view = viewImages
-		case "volumes", "v":
-			m.view = viewVolumes
-		case "networks", "n":
-			m.view = viewNetworks
-		case "ports", "p":
-			m.view = viewPorts
-		case "quit", "q":
-			return m, tea.Quit
-		default:
-			m.statusMsg = "unknown command: " + cmd
+		if def, ok := resolveNavigatorCommand(cmd); ok {
+			if def.quit {
+				return m, tea.Quit
+			}
+			m.view = def.view
+			m.cursor = 0
+			return m, refreshRowsCmd(m.eng, m.view)
 		}
-		m.cursor = 0
-		return m, refreshRowsCmd(m.eng, m.view)
+		m.statusMsg = "unknown command: " + cmd
+		return m, nil
 	default:
 		if msg.Type == tea.KeyBackspace {
 			if len(m.commandInput) > 0 {

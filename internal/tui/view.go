@@ -7,42 +7,12 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-var (
-	colorBg      = lipgloss.Color("#0f1117")
-	colorSurface = lipgloss.Color("#161b22")
-	colorAccent  = lipgloss.Color("#1ebe8a")
-	colorWarn    = lipgloss.Color("#f59e0b")
-	colorErr     = lipgloss.Color("#ef4444")
-	colorMuted   = lipgloss.Color("#6b7280")
-)
-
-var (
-	styleBase = lipgloss.NewStyle().Background(colorBg).Foreground(lipgloss.Color("#e5e7eb"))
-	styleHeader = lipgloss.NewStyle().
-			Background(colorSurface).
-			Foreground(colorAccent).
-			Bold(true).
-			Padding(0, 1)
-	styleStatus = lipgloss.NewStyle().Foreground(colorMuted)
-	styleErr    = lipgloss.NewStyle().Foreground(colorErr)
-	styleAccent = lipgloss.NewStyle().Foreground(colorAccent)
-	styleSelected = lipgloss.NewStyle().
-			Background(colorSurface).
-			Foreground(colorAccent)
-	styleHelp = lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(colorAccent).
-			Padding(1, 2).
-			Background(colorSurface)
-	styleWarn = lipgloss.NewStyle().Foreground(colorWarn)
-)
-
 func (m model) View() string {
 	if m.width == 0 {
 		return "Loading..."
 	}
 
-	var b strings.Builder
+	w := m.width
 	bodyHeight := m.contentHeight()
 
 	title := viewTitle(m)
@@ -51,47 +21,57 @@ func (m model) View() string {
 	} else if m.editMode == editNewStackName {
 		title = "new stack"
 	}
-	b.WriteString(styleHeader.Width(m.width).Render(" dockyard · " + title))
-	b.WriteString("\n")
 
-	var body string
+	header := m.renderHeader(w, title)
+
+	var bodyLines []string
 	switch {
 	case m.helpOpen:
-		body = styleHelp.Render(helpText())
-		body = m.fillHeight(body, bodyHeight)
+		body := styleHelp.Render(helpText())
+		bodyLines = strings.Split(m.fillHeight(body, bodyHeight), "\n")
 	case m.confirm != nil:
-		body = m.fillHeight(styleWarn.Render(fmt.Sprintf("Confirm: %s [y/N]", m.confirm.message)), bodyHeight)
+		bodyLines = strings.Split(
+			m.fillHeight(styleWarn.Render(fmt.Sprintf("Confirm: %s [y/N]", m.confirm.message)), bodyHeight),
+			"\n",
+		)
 	case m.editMode == editNewStackName:
-		body = m.fillHeight(m.nameInput.View(), bodyHeight)
+		bodyLines = strings.Split(m.fillHeight(m.nameInput.View(), bodyHeight), "\n")
 	case m.editMode == editCompose:
-		body = m.renderComposeEditor(bodyHeight)
+		bodyLines = strings.Split(m.renderComposeEditor(bodyHeight), "\n")
 	case m.view == viewLogs:
-		body = m.renderLogs(bodyHeight)
+		bodyLines = strings.Split(m.renderLogs(bodyHeight), "\n")
 	case m.view == viewInspect:
-		body = m.renderInspect(bodyHeight)
+		bodyLines = strings.Split(m.renderInspect(bodyHeight), "\n")
 	default:
-		body = m.renderTable(bodyHeight)
+		panel := strings.TrimRight(m.renderTablePanel(bodyHeight), "\n")
+		bodyLines = strings.Split(panel, "\n")
 	}
-	b.WriteString(body)
 
-	b.WriteString("\n")
+	var footer string
 	if m.commandMode {
-		b.WriteString(styleAccent.Render(":" + m.commandInput + "█"))
+		footer = m.renderCommandInput(w)
 	} else if m.filterActive {
-		b.WriteString(styleAccent.Render("/" + m.filter + "█"))
+		footer = styleAccent.Width(w).Padding(0, 1).Render("/" + m.filter + "█")
 	} else {
-		b.WriteString(styleStatus.Render(statusBar(m)))
+		footer = styleStatus.Width(w).Padding(0, 1).Render(statusBar(m))
 	}
+
+	out := make([]string, 0, m.height)
+	out = append(out, header)
+	out = append(out, bodyLines...)
+	out = append(out, footer)
 
 	if m.errMsg != "" {
-		b.WriteString("\n")
-		b.WriteString(styleErr.Render(m.errMsg))
+		out = append(out, styleErr.Width(w).Padding(0, 1).Render(m.errMsg))
 	} else if m.statusMsg != "" {
-		b.WriteString("\n")
-		b.WriteString(styleStatus.Render(m.statusMsg))
+		out = append(out, styleStatus.Width(w).Padding(0, 1).Render(m.statusMsg))
 	}
 
-	return styleBase.Width(m.width).Render(b.String())
+	for len(out) < m.height {
+		out = append(out, strings.Repeat(" ", w))
+	}
+
+	return strings.Join(out, "\n")
 }
 
 func viewTitle(m model) string {
@@ -123,62 +103,81 @@ func (m model) renderComposeEditor(bodyHeight int) string {
 	} else if !m.stackEditable {
 		hint = "read-only  esc back"
 	}
-	b.WriteString(styleMuted().Render("  " + hint))
+	b.WriteString(styleMuted.Render("  " + hint))
 	b.WriteString("\n")
 	b.WriteString(m.composeTA.View())
 	return m.fillHeight(b.String(), bodyHeight)
 }
 
-func (m model) renderTable(bodyHeight int) string {
+func (m model) renderTablePanel(outerH int) string {
 	rows := m.filteredRows()
 	specs := colsForView(m.view)
-	widths := computeWidths(specs, rows, m.width)
+	w := m.width
 
-	var b strings.Builder
+	panel := styleTablePanel
+	frameX := panel.GetHorizontalFrameSize()
+	frameY := panel.GetVerticalFrameSize()
+	innerW := max(1, w-frameX)
+	innerH := max(1, outerH-frameY)
+
+	contentW := innerW - rowMarkerWidth
+	widths := computeWidths(specs, rows, contentW)
+
 	headers := make([]string, len(specs))
 	for i, s := range specs {
 		headers[i] = s.header
 	}
 
-	b.WriteString(styleAccent.Render("  " + formatTableRow(headers, widths)))
-	b.WriteString("\n")
+	headerText := strings.Repeat(" ", rowMarkerWidth) + formatTableRow(headers, widths)
+	dividerText := strings.Repeat(" ", rowMarkerWidth) + strings.Repeat("─", tableLineWidth(widths))
 
-	b.WriteString(styleMuted().Render(strings.Repeat("─", m.width)))
-	b.WriteString("\n")
+	var lines []string
+	if innerH >= 1 {
+		lines = append(lines, styleMuted.Bold(true).Render(headerText))
+	}
+	if innerH >= 2 {
+		lines = append(lines, lipgloss.NewStyle().Foreground(colorBorder).Render(dividerText))
+	}
 
 	if len(rows) == 0 {
-		b.WriteString(styleMuted().Render("(empty)"))
-		return m.fillHeight(b.String(), bodyHeight)
+		if innerH >= 3 {
+			lines = append(lines, styleMuted.Render(strings.Repeat(" ", rowMarkerWidth)+"(empty)"))
+		}
+		for len(lines) < innerH {
+			lines = append(lines, "")
+		}
+		return panel.Width(w).Render(strings.Join(lines, "\n"))
 	}
 
-	visible := bodyHeight - 2
-	if visible < 1 {
-		visible = 1
-	}
+	dataSlots := innerH - len(lines)
 	start := 0
-	if m.cursor >= visible {
-		start = m.cursor - visible + 1
+	if dataSlots > 0 && m.cursor >= dataSlots {
+		start = m.cursor - dataSlots + 1
 	}
 
+	rowCount := 0
 	for i, r := range rows {
+		if rowCount >= dataSlots {
+			break
+		}
 		if i < start {
 			continue
 		}
-		if i-start >= visible {
-			break
-		}
-		line := formatTableRow(r.cols, widths)
-		marker := "  "
+		line := formatStyledTableRow(m.view, specs, r.cols, widths, r)
 		if i == m.cursor {
-			marker = "> "
-			b.WriteString(styleSelected.Render(marker + line))
+			line = styleSelected.Render("> ") + line
 		} else {
-			b.WriteString(marker + line)
+			line = "  " + line
 		}
-		b.WriteString("\n")
+		lines = append(lines, line)
+		rowCount++
 	}
 
-	return m.fillHeight(b.String(), bodyHeight)
+	for len(lines) < innerH {
+		lines = append(lines, "")
+	}
+
+	return panel.Width(w).Render(strings.Join(lines, "\n"))
 }
 
 func (m model) renderLogs(bodyHeight int) string {
@@ -189,9 +188,9 @@ func (m model) renderLogs(bodyHeight int) string {
 	var b strings.Builder
 	tsFlag, asFlag := logsStatusFlags(m.logShowTS, m.logAutoScroll)
 	if len(lines) == 0 {
-		b.WriteString(styleMuted().Render("  logs - streaming…"))
+		b.WriteString(styleMuted.Render("  logs - streaming…"))
 	} else {
-		b.WriteString(styleMuted().Render(fmt.Sprintf(
+		b.WriteString(styleMuted.Render(fmt.Sprintf(
 			"  logs (%d lines) [ts:%s autoscroll:%s] - t ts  s autoscroll  g/G top/bottom  j/k scroll  / filter  esc back",
 			len(lines), tsFlag, asFlag,
 		)))
@@ -220,7 +219,7 @@ func (m model) renderInspect(bodyHeight int) string {
 	offset := clampScroll(m.logViewport, len(lines), visible)
 
 	var b strings.Builder
-	b.WriteString(styleMuted().Render("  inspect - j/k/pgup/pgdn scroll, esc back"))
+	b.WriteString(styleMuted.Render("  inspect - j/k/pgup/pgdn scroll, esc back"))
 	b.WriteString("\n")
 
 	start := offset
@@ -254,11 +253,27 @@ func statusBar(m model) string {
 	return ":cmd  /filter  j/k  d inspect  l logs  u update  s/S/r  x remove  c stacks  p ports  R refresh  ? help  q quit"
 }
 
+func (m model) renderHeader(w int, title string) string {
+	left := " dockyard" + styleHeaderMuted.Render("/"+title)
+	frame := styleHeader.Padding(0, 1)
+	if m.version == "" {
+		return frame.Width(w).Render(left)
+	}
+	ver := styleHeaderMuted.Render(m.version)
+	innerW := w - frame.GetHorizontalFrameSize()
+	gap := innerW - lipgloss.Width(left) - lipgloss.Width(ver)
+	if gap < 1 {
+		gap = 1
+	}
+	return frame.Width(w).Render(left + strings.Repeat(" ", gap) + ver)
+}
+
 func helpText() string {
 	return `Dockyard TUI - keybindings
 
   :containers :stacks :images :volumes :networks :ports  Jump to view
   /           Filter current view
+  tab         Autocomplete : command
   j/k         Navigate
   d / Enter   Inspect container (containers view)
   l           Logs (follow, autoscroll)
@@ -277,8 +292,14 @@ func helpText() string {
   q           Quit`
 }
 
-func styleMuted() lipgloss.Style {
-	return lipgloss.NewStyle().Foreground(colorMuted)
+func (m model) renderCommandInput(w int) string {
+	input := m.commandInput
+	suffix := execSuggestion(input)
+	if suffix == "" {
+		_, suffix = commandSuggestion(input)
+	}
+	line := styleAccent.Render(":" + input + "█") + styleMuted.Render(suffix)
+	return lipgloss.NewStyle().Width(w).Padding(0, 1).Render(line)
 }
 
 func min(a, b int) int {

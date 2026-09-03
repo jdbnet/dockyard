@@ -12,8 +12,8 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-func Run(ctx context.Context, eng *engine.Engine, cfg *config.Config) error {
-	m := newModel(eng, cfg)
+func Run(ctx context.Context, eng *engine.Engine, cfg *config.Config, version string) error {
+	m := newModel(eng, cfg, version)
 	p := tea.NewProgram(m, tea.WithAltScreen())
 	go func() {
 		<-ctx.Done()
@@ -40,6 +40,7 @@ const (
 type model struct {
 	eng          *engine.Engine
 	cfg          *config.Config
+	version      string
 	view         viewKind
 	rows         []rowItem
 	cursor       int
@@ -84,12 +85,13 @@ type confirmDialog struct {
 	action  func() tea.Cmd
 }
 
-func newModel(eng *engine.Engine, cfg *config.Config) model {
+func newModel(eng *engine.Engine, cfg *config.Config, version string) model {
 	m := model{
-		eng:    eng,
-		cfg:    cfg,
-		view:   viewContainers,
-		events: eng.Subscribe(),
+		eng:     eng,
+		cfg:     cfg,
+		version: version,
+		view:    viewContainers,
+		events:  eng.Subscribe(),
 	}
 	m.nameInput = m.initNameInput()
 	return m

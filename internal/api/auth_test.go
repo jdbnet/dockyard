@@ -23,7 +23,7 @@ func testConfig(auth bool) *config.Config {
 }
 
 func TestAuthDisabledAllowsAPI(t *testing.T) {
-	s := NewServer(testConfig(false), nil)
+	s := NewServer(testConfig(false), nil, "1.2.3")
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/auth/status", nil)
 	rec := httptest.NewRecorder()
@@ -42,7 +42,7 @@ func TestAuthDisabledAllowsAPI(t *testing.T) {
 }
 
 func TestAuthRequiredBlocksWithoutCookie(t *testing.T) {
-	s := NewServer(testConfig(true), nil)
+	s := NewServer(testConfig(true), nil, "1.2.3")
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/containers", nil)
 	rec := httptest.NewRecorder()
@@ -54,7 +54,7 @@ func TestAuthRequiredBlocksWithoutCookie(t *testing.T) {
 }
 
 func TestAuthLoginSetsCookie(t *testing.T) {
-	s := NewServer(testConfig(true), nil)
+	s := NewServer(testConfig(true), nil, "1.2.3")
 
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/login", strings.NewReader(`{"username":"admin","password":"secret"}`))
 	req.Header.Set("Content-Type", "application/json")

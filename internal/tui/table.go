@@ -3,9 +3,11 @@ package tui
 import (
 	"fmt"
 	"strings"
+
+	"github.com/charmbracelet/lipgloss"
 )
 
-const colGap = "  "
+const colSep = " │ "
 
 type colSpec struct {
 	header string
@@ -82,7 +84,7 @@ func colsForView(v viewKind) []colSpec {
 	}
 }
 
-func computeWidths(specs []colSpec, rows []rowItem, termWidth int) []int {
+func computeWidths(specs []colSpec, rows []rowItem, contentW int) []int {
 	widths := make([]int, len(specs))
 	for i, s := range specs {
 		widths[i] = max(len(s.header), s.min)
@@ -105,10 +107,10 @@ func computeWidths(specs []colSpec, rows []rowItem, termWidth int) []int {
 		}
 	}
 
-	if termWidth > 0 {
-		used := tableWidth(widths)
-		if used < termWidth {
-			distributeExtra(widths, specs, termWidth-used)
+	if contentW > 0 {
+		used := tableLineWidth(widths)
+		if used < contentW {
+			distributeExtra(widths, specs, contentW-used)
 		}
 	}
 	return widths
@@ -172,16 +174,88 @@ func formatTableRow(cols []string, widths []int) string {
 		}
 		parts[i] = padCell(val, widths[i])
 	}
-	return strings.Join(parts, colGap)
+	return strings.Join(parts, colSep)
 }
 
-func tableWidth(widths []int) int {
+func tableLineWidth(widths []int) int {
 	if len(widths) == 0 {
 		return 0
 	}
-	n := (len(widths)-1)*len(colGap) + 2 // cursor column
+	n := 0
 	for _, w := range widths {
 		n += w
 	}
+	n += (len(widths) - 1) * len(colSep)
 	return n
+}
+
+func formatStyledTableRow(view viewKind, specs []colSpec, cols []string, widths []int, row rowItem) string {
+	parts := make([]string, len(widths))
+	for i, w := range widths {
+		val := ""
+		if i < len(cols) {
+			val = cols[i]
+		}
+		padded := padCell(val, w)
+		parts[i] = styleTableCell(view, specs, i, val, row).Render(padded)
+	}
+	return strings.Join(parts, colSep)
+}
+
+func styleTableCell(view viewKind, specs []colSpec, col int, val string, row rowItem) lipgloss.Style {
+	header := ""
+	if col < len(specs) {
+		header = specs[col].header
+	}
+
+	switch view {
+	case viewContainers:
+		switch col {
+		case 0:
+			return lipgloss.NewStyle().Foreground(colorText)
+		case 1:
+			return lipgloss.NewStyle().Foreground(colorInfo)
+		case 2:
+			return stateStyle(val)
+		case 5:
+			return lipgloss.NewStyle().Foreground(colorMuted)
+		case 6:
+			return healthStyle(val)
+		default:
+			return lipgloss.NewStyle().Foreground(colorText)
+		}
+	case viewStacks:
+		switch header {
+		case "SRC":
+			return lipgloss.NewStyle().Foreground(colorInfo)
+		case "PATH":
+			return lipgloss.NewStyle().Foreground(colorMuted)
+		default:
+			return lipgloss.NewStyle().Foreground(colorText)
+		}
+	case viewImages:
+		if header == "UNUSED" && val == "unused" {
+			return lipgloss.NewStyle().Foreground(colorWarn)
+		}
+		return lipgloss.NewStyle().Foreground(colorText)
+	case viewVolumes:
+		if header == "UNUSED" && val == "unused" {
+			return lipgloss.NewStyle().Foreground(colorWarn)
+		}
+		return lipgloss.NewStyle().Foreground(colorText)
+	case viewPorts:
+		if header == "STATE" {
+			return stateStyle(val)
+		}
+		if header == "STACK" {
+			return lipgloss.NewStyle().Foreground(colorInfo)
+		}
+		return lipgloss.NewStyle().Foreground(colorText)
+	default:
+		return lipgloss.NewStyle().Foreground(colorText)
+	}
+}
+
+func tableWidth(widths []int) int {
+	return tableLineWidth(widths) + rowMarkerWidth
 }

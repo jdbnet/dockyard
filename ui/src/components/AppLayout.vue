@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import {
   Menu, X, LayoutDashboard, Layers, Image, HardDrive, Network, Plug, LogOut, Sun, Moon,
@@ -7,12 +7,25 @@ import {
 import { useEngineStore } from '@/stores/engine'
 import { useAuthStore } from '@/stores/auth'
 import { useThemeStore } from '@/stores/theme'
+import { getHealth } from '@/api/client'
 
 const route = useRoute()
 const store = useEngineStore()
 const auth = useAuthStore()
 const theme = useThemeStore()
 const sidebarOpen = ref(false)
+const appVersion = ref('')
+
+onMounted(async () => {
+  try {
+    const health = await getHealth()
+    if (health.version) {
+      appVersion.value = health.version
+    }
+  } catch {
+    // health unavailable when web UI is offline
+  }
+})
 
 const nav = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard, match: (p) => p === '/' || p.startsWith('/containers/') },
@@ -52,7 +65,9 @@ async function logout() {
         <img src="/favicon.png" alt="" class="h-9 w-9 shrink-0 rounded-lg" width="36" height="36" />
         <div class="min-w-0 flex-1">
           <div class="truncate text-sm font-semibold text-heading">Dockyard</div>
-          <div class="text-xs text-muted">Docker manager</div>
+          <div class="text-xs text-muted">
+            Docker manager<span v-if="appVersion"> · {{ appVersion }}</span>
+          </div>
         </div>
         <button type="button" class="text-muted lg:hidden" @click="sidebarOpen = false"><X class="h-5 w-5" /></button>
       </div>

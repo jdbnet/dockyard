@@ -17,18 +17,20 @@ const sessionCookieName = "dockyard_session"
 type Server struct {
 	cfg          *config.Config
 	eng          *engine.Engine
+	version      string
 	server       *http.Server
 	mux          *http.ServeMux
 	sessionToken string
 }
 
-func NewServer(cfg *config.Config, eng *engine.Engine) *Server {
+func NewServer(cfg *config.Config, eng *engine.Engine, version string) *Server {
 	mux := http.NewServeMux()
 	token := make([]byte, 32)
 	_, _ = rand.Read(token)
 	s := &Server{
 		cfg:          cfg,
 		eng:          eng,
+		version:      version,
 		mux:          mux,
 		sessionToken: hex.EncodeToString(token),
 		server: &http.Server{
@@ -111,7 +113,11 @@ func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"status": "error", "error": err.Error()})
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]string{"status": "ok", "docker": "connected"})
+	writeJSON(w, http.StatusOK, map[string]string{
+		"status":  "ok",
+		"docker":  "connected",
+		"version": s.version,
+	})
 }
 
 func actionError(w http.ResponseWriter, err error) {
