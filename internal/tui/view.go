@@ -184,6 +184,7 @@ func (m model) renderLogs(bodyHeight int) string {
 	lines := scrollableLines(m, m.logLines)
 	visible := m.logsVisibleLines()
 	offset := clampScroll(m.logViewport, len(lines), visible)
+	hOffset := m.clampLogHOffset()
 
 	var b strings.Builder
 	tsFlag, asFlag := logsStatusFlags(m.logShowTS, m.logAutoScroll)
@@ -191,7 +192,7 @@ func (m model) renderLogs(bodyHeight int) string {
 		b.WriteString(styleMuted.Render("  logs - streaming…"))
 	} else {
 		b.WriteString(styleMuted.Render(fmt.Sprintf(
-			"  logs (%d lines) [ts:%s autoscroll:%s] - t ts  s autoscroll  g/G top/bottom  j/k scroll  / filter  esc back",
+			"  logs (%d lines) [ts:%s autoscroll:%s] - t ts  s autoscroll  g/G top/bottom  ↑↓←→ scroll  / filter  esc back",
 			len(lines), tsFlag, asFlag,
 		)))
 	}
@@ -203,7 +204,7 @@ func (m model) renderLogs(bodyHeight int) string {
 
 	start := offset
 	for i := start; i < len(lines) && i-start < visible; i++ {
-		b.WriteString(truncateWidth(formatLogLine(lines[i], m.logShowTS), m.width))
+		b.WriteString(sliceWidth(formatLogLine(lines[i], m.logShowTS), hOffset, m.width))
 		b.WriteString("\n")
 	}
 
@@ -240,7 +241,7 @@ func statusBar(m model) string {
 	}
 	switch m.view {
 	case viewLogs:
-		return "t timestamps  s autoscroll  g/G top/bottom  j/k scroll  / filter  esc/q back"
+		return "t timestamps  s autoscroll  g/G top/bottom  ↑↓←→ scroll  / filter  esc/q back"
 	case viewInspect:
 		return "j/k/pgup/pgdn scroll  esc/q back"
 	case viewStacks:
@@ -280,6 +281,8 @@ func helpText() string {
   t           Toggle timestamps (logs view)
   s           Toggle autoscroll (logs view)
   g / G       Top / bottom (logs view)
+  ↑↓←→        Scroll logs (j/k/h/l also work)
+  H / L       Start / end of line (logs view)
   u           Update image (pull + recreate)
   s S r       Start / Stop / Restart
   x           Remove (confirm)

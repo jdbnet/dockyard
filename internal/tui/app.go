@@ -56,6 +56,7 @@ type model struct {
 	events       <-chan engine.Event
 	logLines     []string
 	logViewport  int
+	logHOffset   int
 	logContainerID  string
 	logFollowCh     <-chan logFollowMsg
 	logFollowCancel context.CancelFunc

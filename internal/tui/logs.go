@@ -107,6 +107,23 @@ func (m model) logsVisibleLines() int {
 	return visible
 }
 
+func (m model) logsMaxHOffset() int {
+	return clampScroll(1<<30, maxDisplayWidth(m.formattedLogLines()), m.width)
+}
+
+func (m model) clampLogHOffset() int {
+	return clampScroll(m.logHOffset, maxDisplayWidth(m.formattedLogLines()), m.width)
+}
+
+func (m model) formattedLogLines() []string {
+	lines := scrollableLines(m, m.logLines)
+	out := make([]string, len(lines))
+	for i, line := range lines {
+		out[i] = formatLogLine(line, m.logShowTS)
+	}
+	return out
+}
+
 func (m model) logsMaxScroll() int {
 	lines := scrollableLines(m, m.logLines)
 	return clampScroll(len(lines)-m.logsVisibleLines(), len(lines), m.logsVisibleLines())

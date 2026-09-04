@@ -2,6 +2,7 @@ package tui
 
 import (
 	"strings"
+	"unicode/utf8"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -16,6 +17,7 @@ func (m model) backToList() (model, tea.Cmd) {
 	m.logLines = nil
 	m.inspectText = ""
 	m.logViewport = 0
+	m.logHOffset = 0
 	m.filter = ""
 	m.filterActive = false
 	m.editMode = editNone
@@ -82,6 +84,48 @@ func clampScroll(offset, total, visible int) int {
 		return 0
 	}
 	return offset
+}
+
+func skipDisplayWidth(s string, offset int) string {
+	if offset <= 0 {
+		return s
+	}
+	for len(s) > 0 {
+		r, size := utf8.DecodeRuneInString(s)
+		w := lipgloss.Width(string(r))
+		if offset < w {
+			break
+		}
+		offset -= w
+		s = s[size:]
+	}
+	return s
+}
+
+func sliceWidth(s string, offset, width int) string {
+	if width <= 0 {
+		return ""
+	}
+	return truncateWidth(skipDisplayWidth(s, offset), width)
+}
+
+func maxDisplayWidth(lines []string) int {
+	maxW := 0
+	for _, line := range lines {
+		w := lipgloss.Width(line)
+		if w > maxW {
+			maxW = w
+		}
+	}
+	return maxW
+}
+
+func horizontalScrollStep(viewportWidth int) int {
+	step := viewportWidth / 4
+	if step < 4 {
+		return 4
+	}
+	return step
 }
 
 func (m model) fillHeight(content string, height int) string {

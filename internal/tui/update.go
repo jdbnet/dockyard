@@ -22,6 +22,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.view == viewLogs && m.logAutoScroll {
 			m = m.scrollLogsToBottom()
 		}
+		m.logHOffset = m.clampLogHOffset()
 		return m, nil
 
 	case tea.KeyMsg:
@@ -104,6 +105,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.logAutoScroll = true
 		m.logShowTS = true
 		m.logViewport = 0
+		m.logHOffset = 0
 		m.filter = ""
 		m.filterActive = false
 		return m, waitLogFollow(msg.ch)
@@ -514,6 +516,9 @@ func (m model) updateFilter(msg tea.KeyMsg) (model, tea.Cmd) {
 		}
 		m.cursor = 0
 	}
+	if m.view == viewLogs {
+		m.logHOffset = m.clampLogHOffset()
+	}
 	return m, nil
 }
 
@@ -521,12 +526,14 @@ func (m model) updateLogs(msg tea.KeyMsg) (model, tea.Cmd) {
 	lines := scrollableLines(m, m.logLines)
 	page := m.scrollPageSize()
 	visible := m.logsVisibleLines()
+	hStep := horizontalScrollStep(m.width)
 	switch msg.String() {
 	case "q", "esc":
 		m.stopLogFollow()
 		return m.backToList()
 	case "t":
 		m.logShowTS = !m.logShowTS
+		m.logHOffset = m.clampLogHOffset()
 	case "s":
 		m.logAutoScroll = !m.logAutoScroll
 		if m.logAutoScroll {
@@ -538,6 +545,14 @@ func (m model) updateLogs(msg tea.KeyMsg) (model, tea.Cmd) {
 	case "G":
 		m.logAutoScroll = true
 		m = m.scrollLogsToBottom()
+	case "h", "left":
+		m.logHOffset = clampScroll(m.logHOffset-hStep, maxDisplayWidth(m.formattedLogLines()), m.width)
+	case "l", "right":
+		m.logHOffset = clampScroll(m.logHOffset+hStep, maxDisplayWidth(m.formattedLogLines()), m.width)
+	case "H":
+		m.logHOffset = 0
+	case "L":
+		m.logHOffset = m.logsMaxHOffset()
 	case "j", "down":
 		m.logViewport = clampScroll(m.logViewport+1, len(lines), visible)
 		if !m.logsAtBottom() {
