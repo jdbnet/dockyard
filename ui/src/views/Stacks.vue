@@ -11,6 +11,7 @@ const router = useRouter()
 const showNew = ref(false)
 const newName = ref('')
 const createError = ref('')
+const creating = ref(false)
 const newContent = ref(`services:
   app:
     image: nginx:alpine
@@ -35,16 +36,27 @@ async function act(name, action) {
 }
 
 async function submitNew() {
-  if (!newName.value.trim()) return
+  const name = newName.value.trim()
+  if (!name) {
+    createError.value = 'Stack name is required'
+    return
+  }
+  if (/[/\\.]/.test(name)) {
+    createError.value = 'Stack name cannot contain /, \\, or .'
+    return
+  }
   createError.value = ''
   const start = confirm('Start stack after creating?')
+  creating.value = true
   try {
-    await createStack(newName.value.trim(), newContent.value, start)
+    await createStack(name, newContent.value, start)
     showNew.value = false
     newName.value = ''
     await refresh()
   } catch (e) {
     createError.value = e.response?.data?.error || e.message || 'Create failed'
+  } finally {
+    creating.value = false
   }
 }
 </script>
@@ -56,10 +68,20 @@ async function submitNew() {
     </div>
 
     <div v-if="showNew" class="card space-y-3">
-      <input v-model="newName" class="input-field font-mono text-sm w-full max-w-sm" placeholder="stack-name" />
+      <div>
+        <label class="mb-1 block text-sm text-muted">Stack name</label>
+        <input
+          v-model="newName"
+          class="input-field font-mono text-sm w-full max-w-sm"
+          placeholder="my-stack"
+          @input="createError = ''"
+        />
+      </div>
       <ComposeEditor v-model="newContent" min-height="16rem" />
       <div class="flex items-center gap-3">
-        <button class="btn-primary" @click="submitNew">Create stack</button>
+        <button class="btn-primary" :disabled="creating" @click="submitNew">
+          {{ creating ? 'Creating…' : 'Create stack' }}
+        </button>
         <span v-if="createError" class="text-danger text-sm">{{ createError }}</span>
       </div>
     </div>
