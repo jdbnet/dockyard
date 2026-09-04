@@ -216,6 +216,9 @@ func styleTableCell(view viewKind, specs []colSpec, col int, val string, row row
 		case 1:
 			return lipgloss.NewStyle().Foreground(colorInfo)
 		case 2:
+			if strings.Contains(val, "updating") {
+				return lipgloss.NewStyle().Foreground(colorWarn)
+			}
 			return stateStyle(val)
 		case 5:
 			return lipgloss.NewStyle().Foreground(colorMuted)

@@ -137,15 +137,6 @@ func stackActionCmd(eng *engine.Engine, name string, action string) tea.Cmd {
 	}
 }
 
-func updateContainerCmd(eng *engine.Engine, id string) tea.Cmd {
-	return func() tea.Msg {
-		if err := eng.UpdateContainer(context.Background(), id); err != nil {
-			return errLineMsg(err)
-		}
-		return statusLineMsg("updated")
-	}
-}
-
 func newStackTemplate() string {
 	return compose.DefaultTemplate
 }

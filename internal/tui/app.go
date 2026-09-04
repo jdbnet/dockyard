@@ -62,6 +62,8 @@ type model struct {
 	logFollowCancel context.CancelFunc
 	logAutoScroll   bool
 	logShowTS       bool
+	updating        map[string]bool
+	spinnerTick     int
 	inspectText  string
 	helpOpen     bool
 
@@ -93,6 +95,7 @@ func newModel(eng *engine.Engine, cfg *config.Config, version string) model {
 		version: version,
 		view:    viewContainers,
 		events:  eng.Subscribe(),
+		updating: make(map[string]bool),
 	}
 	m.nameInput = m.initNameInput()
 	return m

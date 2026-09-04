@@ -1,12 +1,14 @@
 <script setup>
-import { computed, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useEngineStore } from '@/stores/engine'
-import { containerAction, updateContainer } from '@/api/client'
+import { containerAction, updateContainer, removeImage } from '@/api/client'
+import { promptRemovePreviousImage } from '@/lib/images'
 import Sparkline from '@/components/Sparkline.vue'
 
 const store = useEngineStore()
 const router = useRouter()
+const updating = ref({})
 
 onMounted(() => {
   if (store.composeProjects.length === 0) {
@@ -26,18 +28,38 @@ const projects = computed(() => {
 })
 
 function statusBadge(c) {
+  if (updating.value[c.id]) return 'badge-warn'
   if (c.restart_loop) return 'badge-error'
   if (c.state === 'running') return 'badge-running'
   if (c.state === 'exited') return 'badge-stopped'
   return 'badge-warn'
 }
 
+function statusLabel(c) {
+  if (updating.value[c.id]) return 'updating…'
+  return c.state
+}
+
 async function act(id, action) {
   if (action === 'update') {
-    await updateContainer(id)
-  } else {
-    await containerAction(id, action)
+    updating.value = { ...updating.value, [id]: true }
+    try {
+      const result = await updateContainer(id)
+      await store.fetch()
+      if (result.previous_image && await promptRemovePreviousImage(result.previous_image)) {
+        await removeImage(result.previous_image.id)
+        await store.fetch()
+      }
+    } catch (err) {
+      alert(err.response?.data?.error || err.message || 'Update failed')
+    } finally {
+      const next = { ...updating.value }
+      delete next[id]
+      updating.value = next
+    }
+    return
   }
+  await containerAction(id, action)
   await store.fetch()
 }
 
@@ -89,7 +111,7 @@ function fmtStat(v) {
                 </button>
               </td>
               <td class="py-2 pr-4">
-                <span class="badge" :class="statusBadge(c)">{{ c.state }}</span>
+                <span class="badge" :class="statusBadge(c)">{{ statusLabel(c) }}</span>
               </td>
               <td class="py-2 pr-4">{{ fmtStat(c.cpu_pct) }}</td>
               <td class="py-2 pr-4">{{ fmtStat(c.mem_pct) }}</td>
@@ -102,7 +124,13 @@ function fmtStat(v) {
                 <button class="btn-ghost text-xs" @click="act(c.id, 'start')">Start</button>
                 <button class="btn-ghost text-xs" @click="act(c.id, 'stop')">Stop</button>
                 <button class="btn-ghost text-xs" @click="act(c.id, 'restart')">Restart</button>
-                <button class="btn-ghost text-xs" @click="act(c.id, 'update')">Update</button>
+                <button
+                  class="btn-ghost text-xs"
+                  :disabled="updating[c.id]"
+                  @click="act(c.id, 'update')"
+                >
+                  {{ updating[c.id] ? 'Updating…' : 'Update' }}
+                </button>
               </td>
             </tr>
           </tbody>

@@ -73,6 +73,7 @@ type NetworkSummary struct {
 
 type InspectResult struct {
 	ID      string
+	ImageID string
 	Raw     string
 	Summary ContainerSummary
 }
@@ -200,6 +201,7 @@ func (c *Client) InspectContainer(ctx context.Context, id string) (*InspectResul
 	}
 	return &InspectResult{
 		ID:      raw.ID,
+		ImageID: raw.Image,
 		Raw:     string(b),
 		Summary: summary,
 	}, nil

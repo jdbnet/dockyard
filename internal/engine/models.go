@@ -70,6 +70,17 @@ type StatsSeries struct {
 	Points      []StatPoint `json:"points"`
 }
 
+type PreviousImage struct {
+	ID       string   `json:"id"`
+	ShortID  string   `json:"short_id"`
+	RepoTags []string `json:"repo_tags"`
+	Size     int64    `json:"size"`
+}
+
+type UpdateContainerResult struct {
+	PreviousImage *PreviousImage `json:"previous_image,omitempty"`
+}
+
 type Event struct {
 	Type      string    `json:"type"`
 	Action    string    `json:"action"`

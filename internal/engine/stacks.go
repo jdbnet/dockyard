@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"sort"
+	"strings"
 
 	"github.com/jdbnet/dockyard/internal/compose"
 	"github.com/jdbnet/dockyard/internal/docker"
@@ -238,34 +239,76 @@ func (e *Engine) DeleteStack(ctx context.Context, name string) error {
 	return e.refreshAll(ctx)
 }
 
-func (e *Engine) UpdateContainer(ctx context.Context, id string) error {
+func (e *Engine) UpdateContainer(ctx context.Context, id string) (UpdateContainerResult, error) {
 	insp, err := e.docker.InspectContainer(ctx, id)
 	if err != nil {
-		return err
+		return UpdateContainerResult{}, err
 	}
+	previousImageID := insp.ImageID
 	project, service, workingDir := docker.ContainerComposeInfo(insp.Summary.Labels)
 
 	if project != "" && service != "" {
 		stack, stackErr := e.stackByName(ctx, project)
 		if stackErr == nil {
 			if err := e.stacks.UpdateService(ctx, stack, service); err == nil {
-				return e.refreshAll(ctx)
+				return e.finishContainerUpdate(ctx, previousImageID)
 			}
 		}
 		if workingDir != "" {
 			ext, err := compose.StackFromPath(project, workingDir)
 			if err == nil {
 				if err := e.stacks.UpdateService(ctx, ext, service); err == nil {
-					return e.refreshAll(ctx)
+					return e.finishContainerUpdate(ctx, previousImageID)
 				}
 			}
 		}
 	}
 
 	if _, err := e.docker.RecreateContainer(ctx, id); err != nil {
-		return err
+		return UpdateContainerResult{}, err
 	}
-	return e.refreshAll(ctx)
+	return e.finishContainerUpdate(ctx, previousImageID)
+}
+
+func (e *Engine) finishContainerUpdate(ctx context.Context, previousImageID string) (UpdateContainerResult, error) {
+	if err := e.refreshAll(ctx); err != nil {
+		return UpdateContainerResult{}, err
+	}
+	result := UpdateContainerResult{}
+	if img := e.removableImage(ctx, previousImageID); img != nil {
+		result.PreviousImage = img
+	}
+	return result, nil
+}
+
+func (e *Engine) removableImage(ctx context.Context, imageID string) *PreviousImage {
+	if imageID == "" {
+		return nil
+	}
+	norm := normalizeEngineImageID(imageID)
+	images, err := e.Images(ctx)
+	if err != nil {
+		return nil
+	}
+	for _, img := range images {
+		if normalizeEngineImageID(img.ID) != norm {
+			continue
+		}
+		if !img.Unused {
+			return nil
+		}
+		return &PreviousImage{
+			ID:       img.ID,
+			ShortID:  img.ShortID,
+			RepoTags: img.RepoTags,
+			Size:     img.Size,
+		}
+	}
+	return nil
+}
+
+func normalizeEngineImageID(id string) string {
+	return strings.TrimPrefix(id, "sha256:")
 }
 
 func (e *Engine) StacksDir() string {

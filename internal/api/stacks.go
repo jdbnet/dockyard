@@ -73,11 +73,15 @@ func (s *Server) handleStackAction(w http.ResponseWriter, r *http.Request, fn fu
 
 func (s *Server) handleUpdateContainer(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
-	if err := s.eng.UpdateContainer(r.Context(), id); err != nil {
+	result, err := s.eng.UpdateContainer(r.Context(), id)
+	if err != nil {
 		actionError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+	writeJSON(w, http.StatusOK, map[string]any{
+		"status":          "ok",
+		"previous_image": result.PreviousImage,
+	})
 }
 
 func (s *Server) handleDeleteStack(w http.ResponseWriter, r *http.Request) {

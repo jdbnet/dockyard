@@ -48,7 +48,8 @@ export async function removeContainer(id) {
 }
 
 export async function updateContainer(id) {
-  await api.post(`/containers/${id}/update`)
+  const { data } = await api.post(`/containers/${id}/update`)
+  return data
 }
 
 export async function getStacks() {

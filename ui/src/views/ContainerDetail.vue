@@ -3,10 +3,12 @@ import { ref, onMounted, onUnmounted, computed, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import uPlot from 'uplot'
 import 'uplot/dist/uPlot.min.css'
-import { getContainer, containerAction, removeContainer, updateContainer, wsURL } from '@/api/client'
+import { getContainer, containerAction, removeContainer, updateContainer, removeImage, wsURL } from '@/api/client'
+import { promptRemovePreviousImage } from '@/lib/images'
 
 const route = useRoute()
 const loading = ref(true)
+const updating = ref(false)
 const detail = ref(null)
 const logs = ref([])
 const logEl = ref(null)
@@ -111,10 +113,22 @@ function connectStreams() {
 
 async function act(action) {
   if (action === 'update') {
-    await updateContainer(route.params.id)
-  } else {
-    await containerAction(route.params.id, action)
+    updating.value = true
+    try {
+      const result = await updateContainer(route.params.id)
+      await load()
+      if (result.previous_image && await promptRemovePreviousImage(result.previous_image)) {
+        await removeImage(result.previous_image.id)
+        await load()
+      }
+    } catch (err) {
+      alert(err.response?.data?.error || err.message || 'Update failed')
+    } finally {
+      updating.value = false
+    }
+    return
   }
+  await containerAction(route.params.id, action)
   await load()
 }
 
@@ -149,7 +163,9 @@ onUnmounted(() => {
         <button class="btn-primary" @click="act('start')">Start</button>
         <button class="btn-ghost" @click="act('stop')">Stop</button>
         <button class="btn-ghost" @click="act('restart')">Restart</button>
-        <button class="btn-ghost" @click="act('update')">Update</button>
+        <button class="btn-ghost" :disabled="updating" @click="act('update')">
+          {{ updating ? 'Updating…' : 'Update' }}
+        </button>
         <button class="btn-ghost text-danger" @click="remove">Remove</button>
       </div>
     </div>
@@ -174,7 +190,7 @@ onUnmounted(() => {
     </div>
 
     <div class="card grid gap-2 text-sm md:grid-cols-3">
-      <div><span class="text-muted">State:</span> {{ container.state }}</div>
+      <div><span class="text-muted">State:</span> {{ updating ? 'updating…' : container.state }}</div>
       <div><span class="text-muted">Health:</span> {{ container.health || '-' }}</div>
       <div><span class="text-muted">Uptime:</span> {{ container.uptime || '-' }}</div>
       <div><span class="text-muted">Stack:</span> {{ container.compose_project || '-' }}</div>

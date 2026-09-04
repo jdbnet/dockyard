@@ -163,7 +163,8 @@ func (m model) renderTablePanel(outerH int) string {
 		if i < start {
 			continue
 		}
-		line := formatStyledTableRow(m.view, specs, r.cols, widths, r)
+		cols := containerRowCols(r, m.view == viewContainers && m.updating[r.id], m.spinnerTick)
+		line := formatStyledTableRow(m.view, specs, cols, widths, r)
 		if i == m.cursor {
 			line = styleSelected.Render("> ") + line
 		} else {

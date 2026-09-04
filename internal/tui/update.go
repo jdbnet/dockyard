@@ -127,6 +127,16 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
+	case updateDoneMsg:
+		return m.finishContainerUpdate(msg)
+
+	case updateSpinnerMsg:
+		if len(m.updating) == 0 {
+			return m, nil
+		}
+		m.spinnerTick++
+		return m, updateSpinnerTick()
+
 	case composeLoadMsg:
 		m.stackName = msg.name
 		m.stackNew = false
@@ -285,7 +295,7 @@ func (m model) updateContainers(msg tea.KeyMsg) (model, tea.Cmd) {
 	case "u":
 		sel := m.selected()
 		if sel != nil && sel.id != "" {
-			return m, updateContainerCmd(m.eng, sel.id)
+			return m.startContainerUpdate(sel.id)
 		}
 	case "s":
 		return m, m.cmdAction("start", m.eng.Start)
