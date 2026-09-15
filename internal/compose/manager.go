@@ -98,12 +98,12 @@ func (m *Manager) Read(name string) (string, error) {
 	return string(b), nil
 }
 
-// Write saves compose content to a managed stack (creates compose.yaml).
+// Write saves compose content to a managed stack (creates the directory and compose.yaml).
 func (m *Manager) Write(name, content string) error {
-	path, err := m.stackPath(name)
-	if err != nil {
+	if err := validateStackName(name); err != nil {
 		return err
 	}
+	path := filepath.Join(m.stacksDir, name)
 	if err := os.MkdirAll(path, 0o755); err != nil {
 		return err
 	}
