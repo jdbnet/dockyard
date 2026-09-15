@@ -127,3 +127,7 @@ export function wsURL(path) {
   const proto = location.protocol === 'https:' ? 'wss:' : 'ws:'
   return `${proto}//${location.host}${path}`
 }
+
+export function execWSURL(id) {
+  return wsURL(`/ws/exec/${encodeURIComponent(id)}`)
+}

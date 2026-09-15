@@ -290,8 +290,15 @@ func (m model) updateContainers(msg tea.KeyMsg) (model, tea.Cmd) {
 	case "l":
 		return m, m.cmdLogs()
 	case "e":
-		m.commandMode = true
-		m.commandInput = "exec "
+		sel := m.selected()
+		if sel == nil || sel.id == "" {
+			return m, nil
+		}
+		if sel.meta.State != "running" {
+			m.statusMsg = "container is not running"
+			return m, nil
+		}
+		return m, cmdShell(m.eng, sel.id)
 	case "u":
 		sel := m.selected()
 		if sel != nil && sel.id != "" {
@@ -480,8 +487,12 @@ func (m model) updateCommand(msg tea.KeyMsg) (model, tea.Cmd) {
 			}
 			parts := strings.Fields(shellCmd)
 			return m, func() tea.Msg {
-				if err := m.eng.Exec(context.Background(), sel.id, parts); err != nil {
+				output, err := m.eng.Exec(context.Background(), sel.id, parts)
+				if err != nil {
 					return errLineMsg(err)
+				}
+				if output != "" {
+					return statusLineMsg(output)
 				}
 				return statusLineMsg("exec ok")
 			}

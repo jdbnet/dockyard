@@ -419,22 +419,3 @@ func (c *Client) Events(ctx context.Context) (<-chan events.Message, <-chan erro
 func (c *Client) RawClient() *client.Client {
 	return c.cli
 }
-
-func (c *Client) Exec(ctx context.Context, id string, cmd []string) error {
-	execResp, err := c.cli.ContainerExecCreate(ctx, id, container.ExecOptions{
-		Cmd:          cmd,
-		AttachStdout: true,
-		AttachStderr: true,
-		Tty:          true,
-	})
-	if err != nil {
-		return err
-	}
-	attach, err := c.cli.ContainerExecAttach(ctx, execResp.ID, container.ExecAttachOptions{Tty: true})
-	if err != nil {
-		return err
-	}
-	defer attach.Close()
-	_, err = io.Copy(io.Discard, attach.Reader)
-	return err
-}

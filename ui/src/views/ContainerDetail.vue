@@ -5,10 +5,12 @@ import uPlot from 'uplot'
 import 'uplot/dist/uPlot.min.css'
 import { getContainer, containerAction, removeContainer, updateContainer, removeImage, wsURL } from '@/api/client'
 import { promptRemovePreviousImage } from '@/lib/images'
+import TerminalPanel from '@/components/TerminalPanel.vue'
 
 const route = useRoute()
 const loading = ref(true)
 const updating = ref(false)
+const bottomPanel = ref(route.query.shell === '1' ? 'shell' : 'logs')
 const detail = ref(null)
 const logs = ref([])
 const logEl = ref(null)
@@ -23,6 +25,7 @@ let statsWS = null
 let logsWS = null
 
 const container = computed(() => detail.value?.container)
+const containerRunning = computed(() => container.value?.state === 'running')
 
 const displayLogs = computed(() =>
   logs.value.map((line) => formatLogLine(line, logShowTS.value)).join('\n'),
@@ -200,8 +203,24 @@ onUnmounted(() => {
 
     <div class="card">
       <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <h3 class="text-sm font-medium text-muted">Logs</h3>
         <div class="flex gap-2 text-xs">
+          <button
+            class="btn-ghost py-1"
+            :class="{ 'text-accent': bottomPanel === 'logs' }"
+            @click="bottomPanel = 'logs'"
+          >
+            Logs
+          </button>
+          <button
+            class="btn-ghost py-1"
+            :class="{ 'text-accent': bottomPanel === 'shell' }"
+            :disabled="!containerRunning"
+            @click="bottomPanel = 'shell'"
+          >
+            Shell
+          </button>
+        </div>
+        <div v-if="bottomPanel === 'logs'" class="flex gap-2 text-xs">
           <button class="btn-ghost py-1" @click="logShowTS = !logShowTS">
             Timestamps: {{ logShowTS ? 'on' : 'off' }}
           </button>
@@ -211,10 +230,17 @@ onUnmounted(() => {
         </div>
       </div>
       <pre
+        v-if="bottomPanel === 'logs'"
         ref="logEl"
         class="log-panel"
         @scroll="onLogScroll"
       >{{ displayLogs || '(waiting for logs...)' }}</pre>
+      <TerminalPanel
+        v-else
+        :container-id="route.params.id"
+        :active="bottomPanel === 'shell'"
+        :running="containerRunning"
+      />
     </div>
   </div>
 </template>

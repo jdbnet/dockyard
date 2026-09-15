@@ -103,6 +103,7 @@ func (s *Server) registerRoutes() {
 	s.mux.HandleFunc("GET /ws/events", s.handleWSEvents)
 	s.mux.HandleFunc("GET /ws/stats", s.handleWSStats)
 	s.mux.HandleFunc("GET /ws/logs/{id}", s.handleWSLogs)
+	s.mux.HandleFunc("GET /ws/exec/{id}", s.handleWSExec)
 
 	s.mux.HandleFunc("GET /", s.handleSPA)
 	s.mux.HandleFunc("GET /{$}", s.handleSPA)

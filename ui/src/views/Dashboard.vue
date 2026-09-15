@@ -131,6 +131,13 @@ function fmtStat(v) {
                 >
                   {{ updating[c.id] ? 'Updating…' : 'Update' }}
                 </button>
+                <button
+                  class="btn-ghost text-xs"
+                  :disabled="c.state !== 'running'"
+                  @click="router.push(`/containers/${c.short_id || c.id}?shell=1`)"
+                >
+                  Shell
+                </button>
               </td>
             </tr>
           </tbody>

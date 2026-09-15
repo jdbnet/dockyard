@@ -456,8 +456,23 @@ func (e *Engine) StreamLogs(ctx context.Context, id string, opts docker.LogOptio
 	return e.docker.StreamLogLines(ctx, id, opts, emit)
 }
 
-func (e *Engine) Exec(ctx context.Context, id string, cmd []string) error {
+func (e *Engine) Exec(ctx context.Context, id string, cmd []string) (string, error) {
+	id = e.resolveContainerID(id)
 	return e.docker.Exec(ctx, id, cmd)
+}
+
+func (e *Engine) Shell(ctx context.Context, id string, session docker.TerminalSession) error {
+	id = e.resolveContainerID(id)
+	for _, c := range e.store.containersSnapshot() {
+		if c.ID != id {
+			continue
+		}
+		if c.State != "running" {
+			return fmt.Errorf("container %q is not running", c.Name)
+		}
+		return e.docker.InteractiveExecShell(ctx, id, session)
+	}
+	return fmt.Errorf("container not found")
 }
 
 func (e *Engine) ForceRefresh(ctx context.Context) error {

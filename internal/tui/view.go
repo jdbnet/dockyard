@@ -252,7 +252,7 @@ func statusBar(m model) string {
 	case viewPorts:
 		return "d inspect  j/k nav  R refresh  :cmd  /filter  ? help  q quit"
 	}
-	return ":cmd  /filter  j/k  d inspect  l logs  u update  s/S/r  x remove  c stacks  p ports  R refresh  ? help  q quit"
+	return ":cmd  /filter  j/k  d inspect  e shell  l logs  u update  s/S/r  x remove  c stacks  p ports  R refresh  ? help  q quit"
 }
 
 func (m model) renderHeader(w int, title string) string {
@@ -274,10 +274,12 @@ func helpText() string {
 	return `Dockyard TUI - keybindings
 
   :containers :stacks :images :volumes :networks :ports  Jump to view
+  :exec cmd    Run command in selected container
   /           Filter current view
   tab         Autocomplete : command
   j/k         Navigate
   d / Enter   Inspect container (containers view)
+  e           Shell into running container (containers view)
   l           Logs (follow, autoscroll)
   t           Toggle timestamps (logs view)
   s           Toggle autoscroll (logs view)
