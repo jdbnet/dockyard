@@ -26,7 +26,7 @@ archives:
   - id: binaries
     ids:
       - dockyard
-    format: binary
+    formats: [binary]
     name_template: "dockyard-{{ .Arch }}"
 
 nfpms:
@@ -58,55 +58,26 @@ nfpms:
     deb:
       compression: gzip
 
-dockers:
-  - id: linux-amd64
-    ids:
+dockers_v2:
+  - ids:
       - dockyard
     dockerfile: Dockerfile.release
-    goos: linux
-    goarch: amd64
-    image_templates:
-      - "ghcr.io/jdbnet/dockyard:{{ .Version }}-amd64"
+    images:
+      - ghcr.io/jdbnet/dockyard
+    tags:
+      - "{{ .Version }}"
+      - "{{ if not .IsNightly }}latest{{ end }}"
     extra_files:
       - config.yaml
-    use: buildx
-    build_flag_templates:
-      - "--pull"
-      - "--platform=linux/amd64"
-      - "--label=org.opencontainers.image.created={{.Date}}"
-      - "--label=org.opencontainers.image.title={{.ProjectName}}"
-      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
-      - "--label=org.opencontainers.image.version={{.Version}}"
-      - "--label=org.opencontainers.image.source=https://github.com/jdbnet/dockyard"
-  - id: linux-arm64
-    ids:
-      - dockyard
-    dockerfile: Dockerfile.release
-    goos: linux
-    goarch: arm64
-    image_templates:
-      - "ghcr.io/jdbnet/dockyard:{{ .Version }}-arm64"
-    extra_files:
-      - config.yaml
-    use: buildx
-    build_flag_templates:
-      - "--pull"
-      - "--platform=linux/arm64"
-      - "--label=org.opencontainers.image.created={{.Date}}"
-      - "--label=org.opencontainers.image.title={{.ProjectName}}"
-      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
-      - "--label=org.opencontainers.image.version={{.Version}}"
-      - "--label=org.opencontainers.image.source=https://github.com/jdbnet/dockyard"
-
-docker_manifests:
-  - name_template: "ghcr.io/jdbnet/dockyard:{{ .Version }}"
-    image_templates:
-      - "ghcr.io/jdbnet/dockyard:{{ .Version }}-amd64"
-      - "ghcr.io/jdbnet/dockyard:{{ .Version }}-arm64"
-  - name_template: "ghcr.io/jdbnet/dockyard:latest"
-    image_templates:
-      - "ghcr.io/jdbnet/dockyard:{{ .Version }}-amd64"
-      - "ghcr.io/jdbnet/dockyard:{{ .Version }}-arm64"
+    platforms:
+      - linux/amd64
+      - linux/arm64
+    labels:
+      org.opencontainers.image.created: "{{.Date}}"
+      org.opencontainers.image.title: "{{.ProjectName}}"
+      org.opencontainers.image.revision: "{{.FullCommit}}"
+      org.opencontainers.image.version: "{{.Version}}"
+      org.opencontainers.image.source: "https://github.com/jdbnet/dockyard"
 
 changelog:
   disable: true

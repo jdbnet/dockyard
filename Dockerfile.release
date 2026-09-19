@@ -1,7 +1,8 @@
 FROM alpine:3.24
 RUN apk add --no-cache ca-certificates tzdata wget
 WORKDIR /app
-COPY dockyard ./dockyard
+ARG TARGETPLATFORM
+COPY $TARGETPLATFORM/dockyard ./dockyard
 COPY config.yaml ./config.yaml
 ENV DOCKYARD_WEB_BIND=0.0.0.0
 EXPOSE 8080
