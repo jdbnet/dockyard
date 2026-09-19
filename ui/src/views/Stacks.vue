@@ -1,15 +1,21 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import ComposeEditor from '@/components/ComposeEditor.vue'
+import { useEngineStore } from '@/stores/engine'
+import { useUiStore } from '@/stores/ui'
+import { errorMessage } from '@/lib/errors'
 import {
   getStacks, createStack, stackUp, stackDown, stackUpdate, deleteStack,
 } from '@/api/client'
 
 const stacks = ref([])
 const router = useRouter()
+const store = useEngineStore()
+const ui = useUiStore()
 const search = ref('')
 const updating = ref({})
+const pending = ref({})
 const showNew = ref(false)
 const newName = ref('')
 const createError = ref('')
@@ -23,11 +29,19 @@ const newContent = ref(`services:
 `)
 
 onMounted(async () => {
-  stacks.value = await getStacks()
+  await refresh()
+})
+
+watch(() => store.lastEvent, (ev) => {
+  if (ev?.type === 'container') refresh()
 })
 
 async function refresh() {
-  stacks.value = await getStacks()
+  try {
+    stacks.value = await getStacks()
+  } catch (err) {
+    ui.setError(errorMessage(err, 'Failed to load stacks'))
+  }
 }
 
 const filteredStacks = computed(() => {
@@ -44,7 +58,7 @@ async function act(name, action) {
       await stackUpdate(name)
       await refresh()
     } catch (err) {
-      alert(err.response?.data?.error || err.message || 'Update failed')
+      ui.setError(errorMessage(err, 'Update failed'))
     } finally {
       const next = { ...updating.value }
       delete next[name]
@@ -52,9 +66,18 @@ async function act(name, action) {
     }
     return
   }
-  const fn = { up: stackUp, down: stackDown, delete: deleteStack }[action]
-  await fn(name)
-  await refresh()
+  pending.value = { ...pending.value, [name]: action }
+  try {
+    const fn = { up: stackUp, down: stackDown, delete: deleteStack }[action]
+    await fn(name)
+    await refresh()
+  } catch (err) {
+    ui.setError(errorMessage(err, `${action} failed`))
+  } finally {
+    const next = { ...pending.value }
+    delete next[name]
+    pending.value = next
+  }
 }
 
 async function submitNew() {
@@ -139,16 +162,16 @@ async function submitNew() {
             </td>
             <td class="py-2 font-mono text-xs text-muted">{{ s.path }}</td>
             <td class="py-2 space-x-1">
-              <button class="btn-ghost text-xs" @click="act(s.name, 'up')">Up</button>
-              <button class="btn-ghost text-xs" @click="act(s.name, 'down')">Down</button>
+              <button class="btn-ghost text-xs" :disabled="!!pending[s.name] || !!updating[s.name]" @click="act(s.name, 'up')">Up</button>
+              <button class="btn-ghost text-xs" :disabled="!!pending[s.name] || !!updating[s.name]" @click="act(s.name, 'down')">Down</button>
               <button
                 class="btn-ghost text-xs"
-                :disabled="updating[s.name]"
+                :disabled="!!pending[s.name] || !!updating[s.name]"
                 @click="act(s.name, 'update')"
               >
                 {{ updating[s.name] ? 'Updating…' : 'Update' }}
               </button>
-              <button v-if="s.managed" class="btn-ghost text-xs text-danger" @click="act(s.name, 'delete')">Delete</button>
+              <button v-if="s.managed" class="btn-ghost text-xs text-danger" :disabled="!!pending[s.name] || !!updating[s.name]" @click="act(s.name, 'delete')">Delete</button>
             </td>
           </tr>
         </tbody>

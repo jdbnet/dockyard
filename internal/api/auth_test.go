@@ -89,3 +89,54 @@ func TestAuthLoginSetsCookie(t *testing.T) {
 		t.Fatalf("expected authenticated status: %+v", status)
 	}
 }
+
+func TestAuthLogoutInvalidatesCookie(t *testing.T) {
+	s := NewServer(testConfig(true), nil, "1.2.3")
+
+	login := httptest.NewRequest(http.MethodPost, "/api/v1/auth/login", strings.NewReader(`{"username":"admin","password":"secret"}`))
+	login.Header.Set("Content-Type", "application/json")
+	loginRec := httptest.NewRecorder()
+	s.server.Handler.ServeHTTP(loginRec, login)
+	if loginRec.Code != http.StatusOK {
+		t.Fatalf("login expected 200, got %d", loginRec.Code)
+	}
+
+	var cookie *http.Cookie
+	for _, c := range loginRec.Result().Cookies() {
+		if c.Name == sessionCookieName {
+			cookie = c
+			break
+		}
+	}
+	if cookie == nil || cookie.Value == "" {
+		t.Fatal("expected session cookie")
+	}
+
+	logout := httptest.NewRequest(http.MethodPost, "/api/v1/auth/logout", nil)
+	logout.AddCookie(cookie)
+	logoutRec := httptest.NewRecorder()
+	s.server.Handler.ServeHTTP(logoutRec, logout)
+	if logoutRec.Code != http.StatusOK {
+		t.Fatalf("logout expected 200, got %d", logoutRec.Code)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/containers", nil)
+	req.AddCookie(cookie)
+	rec := httptest.NewRecorder()
+	s.server.Handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("expected 401 after logout, got %d", rec.Code)
+	}
+
+	statusReq := httptest.NewRequest(http.MethodGet, "/api/v1/auth/status", nil)
+	statusReq.AddCookie(cookie)
+	statusRec := httptest.NewRecorder()
+	s.server.Handler.ServeHTTP(statusRec, statusReq)
+	var status map[string]bool
+	if err := json.Unmarshal(statusRec.Body.Bytes(), &status); err != nil {
+		t.Fatal(err)
+	}
+	if status["authenticated"] {
+		t.Fatal("old cookie should not remain authenticated after logout")
+	}
+}

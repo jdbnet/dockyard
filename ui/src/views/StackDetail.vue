@@ -6,9 +6,12 @@ import ComposeEditor from '@/components/ComposeEditor.vue'
 import {
   getStackCompose, saveStackCompose, stackUp, stackDown, stackUpdate, deleteStack,
 } from '@/api/client'
+import { useUiStore } from '@/stores/ui'
+import { errorMessage } from '@/lib/errors'
 
 const route = useRoute()
 const router = useRouter()
+const ui = useUiStore()
 const name = computed(() => route.params.name)
 const content = ref('')
 const managed = ref(true)
@@ -28,12 +31,17 @@ const busyLabels = {
 async function load() {
   loading.value = true
   saveError.value = ''
-  const data = await getStackCompose(name.value)
-  content.value = data.content
-  managed.value = data.managed
-  editable.value = data.editable
-  path.value = data.path || ''
-  loading.value = false
+  try {
+    const data = await getStackCompose(name.value)
+    content.value = data.content
+    managed.value = data.managed
+    editable.value = data.editable
+    path.value = data.path || ''
+  } catch (err) {
+    ui.setError(errorMessage(err, 'Failed to load stack'))
+  } finally {
+    loading.value = false
+  }
 }
 
 onMounted(load)
@@ -58,7 +66,7 @@ async function act(action) {
     await fn(name.value)
   } catch (err) {
     const fallback = { up: 'Up failed', down: 'Down failed', update: 'Update failed' }[action]
-    alert(err.response?.data?.error || err.message || fallback)
+    ui.setError(errorMessage(err, fallback))
   } finally {
     busy.value = ''
   }
@@ -72,7 +80,7 @@ async function remove() {
     await deleteStack(name.value)
     router.push('/stacks')
   } catch (e) {
-    saveError.value = e.response?.data?.error || e.message || 'Delete failed'
+    ui.setError(errorMessage(e, 'Delete failed'))
   }
 }
 </script>

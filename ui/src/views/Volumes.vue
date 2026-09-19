@@ -1,17 +1,42 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { getVolumes, removeVolume } from '@/api/client'
+import { useEngineStore } from '@/stores/engine'
+import { useUiStore } from '@/stores/ui'
+import { errorMessage } from '@/lib/errors'
 
 const volumes = ref([])
+const removing = ref('')
+const store = useEngineStore()
+const ui = useUiStore()
 
 onMounted(async () => {
-  volumes.value = await getVolumes()
+  await refresh()
 })
+
+watch(() => store.lastEvent, (ev) => {
+  if (ev?.type === 'volume' || ev?.type === 'container') refresh()
+})
+
+async function refresh() {
+  try {
+    volumes.value = await getVolumes()
+  } catch (err) {
+    ui.setError(errorMessage(err, 'Failed to load volumes'))
+  }
+}
 
 async function remove(name) {
   if (!confirm(`Remove volume ${name}?`)) return
-  await removeVolume(name)
-  volumes.value = await getVolumes()
+  removing.value = name
+  try {
+    await removeVolume(name)
+    await refresh()
+  } catch (err) {
+    ui.setError(errorMessage(err, 'Remove failed'))
+  } finally {
+    removing.value = ''
+  }
 }
 </script>
 
@@ -37,7 +62,13 @@ async function remove(name) {
               <span v-if="v.unused" class="badge badge-warn">unused</span>
             </td>
             <td class="py-2">
-              <button class="btn-ghost text-xs text-danger" @click="remove(v.name)">Remove</button>
+              <button
+                class="btn-ghost text-xs text-danger"
+                :disabled="!!removing"
+                @click="remove(v.name)"
+              >
+                Remove
+              </button>
             </td>
           </tr>
         </tbody>

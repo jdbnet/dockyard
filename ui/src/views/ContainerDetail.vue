@@ -1,15 +1,21 @@
 <script setup>
-import { ref, onMounted, onUnmounted, computed, nextTick } from 'vue'
+import { ref, onMounted, onUnmounted, computed, nextTick, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import uPlot from 'uplot'
 import 'uplot/dist/uPlot.min.css'
 import { getContainer, containerAction, removeContainer, updateContainer, removeImage, wsURL } from '@/api/client'
 import { promptRemovePreviousImage, fmtBytes } from '@/lib/images'
+import { useEngineStore } from '@/stores/engine'
+import { useUiStore } from '@/stores/ui'
+import { errorMessage } from '@/lib/errors'
 import TerminalPanel from '@/components/TerminalPanel.vue'
 
 const route = useRoute()
+const store = useEngineStore()
+const ui = useUiStore()
 const loading = ref(true)
 const updating = ref(false)
+const pending = ref('')
 const bottomPanel = ref(route.query.shell === '1' ? 'shell' : 'logs')
 const detail = ref(null)
 const logs = ref([])
@@ -26,10 +32,24 @@ let logsWS = null
 
 const container = computed(() => detail.value?.container)
 const containerRunning = computed(() => container.value?.state === 'running')
+const busy = computed(() => updating.value || !!pending.value)
 
 const displayLogs = computed(() =>
   logs.value.map((line) => formatLogLine(line, logShowTS.value)).join('\n'),
 )
+
+const inspectText = computed(() => {
+  const raw = detail.value?.inspect
+  if (raw == null) return '(no inspect data)'
+  if (typeof raw === 'string') {
+    try {
+      return JSON.stringify(JSON.parse(raw), null, 2)
+    } catch {
+      return raw
+    }
+  }
+  return JSON.stringify(raw, null, 2)
+})
 
 function formatLogLine(line, showTS) {
   if (showTS) return line
@@ -68,12 +88,25 @@ function applyStatsPoints(points) {
   renderCharts(points)
 }
 
-async function load() {
-  loading.value = true
-  detail.value = await getContainer(route.params.id)
-  loading.value = false
-  await nextTick()
-  applyStatsPoints(detail.value?.stats?.points ?? [])
+function eventMatchesContainer(ev) {
+  if (!ev || ev.type !== 'container') return false
+  const c = container.value
+  if (!c) return false
+  const res = ev.resource || ''
+  return res === c.id || res === c.short_id || (c.id && c.id.startsWith(res)) || (res && c.id?.startsWith(res))
+}
+
+async function load({ silent = false } = {}) {
+  if (!silent) loading.value = true
+  try {
+    detail.value = await getContainer(route.params.id)
+    await nextTick()
+    applyStatsPoints(detail.value?.stats?.points ?? [])
+  } catch (err) {
+    ui.setError(errorMessage(err, 'Failed to load container'))
+  } finally {
+    loading.value = false
+  }
 }
 
 function renderCharts(points) {
@@ -119,27 +152,44 @@ async function act(action) {
     updating.value = true
     try {
       const result = await updateContainer(route.params.id)
-      await load()
+      await load({ silent: true })
       if (result.previous_image && await promptRemovePreviousImage(result.previous_image)) {
         await removeImage(result.previous_image.id)
-        await load()
+        await load({ silent: true })
       }
     } catch (err) {
-      alert(err.response?.data?.error || err.message || 'Update failed')
+      ui.setError(errorMessage(err, 'Update failed'))
     } finally {
       updating.value = false
     }
     return
   }
-  await containerAction(route.params.id, action)
-  await load()
+  pending.value = action
+  try {
+    await containerAction(route.params.id, action)
+    await load({ silent: true })
+  } catch (err) {
+    ui.setError(errorMessage(err, `${action} failed`))
+  } finally {
+    pending.value = ''
+  }
 }
 
 async function remove() {
   if (!confirm('Remove this container?')) return
-  await removeContainer(route.params.id)
-  history.back()
+  try {
+    await removeContainer(route.params.id)
+    history.back()
+  } catch (err) {
+    ui.setError(errorMessage(err, 'Remove failed'))
+  }
 }
+
+watch(() => store.lastEvent, (ev) => {
+  if (eventMatchesContainer(ev)) {
+    load({ silent: true })
+  }
+})
 
 onMounted(async () => {
   await load()
@@ -163,13 +213,13 @@ onUnmounted(() => {
         <p class="text-sm text-muted">{{ container.image }}</p>
       </div>
       <div class="flex gap-2">
-        <button class="btn-primary" @click="act('start')">Start</button>
-        <button class="btn-ghost" @click="act('stop')">Stop</button>
-        <button class="btn-ghost" @click="act('restart')">Restart</button>
-        <button class="btn-ghost" :disabled="updating" @click="act('update')">
+        <button class="btn-primary" :disabled="busy" @click="act('start')">Start</button>
+        <button class="btn-ghost" :disabled="busy" @click="act('stop')">Stop</button>
+        <button class="btn-ghost" :disabled="busy" @click="act('restart')">Restart</button>
+        <button class="btn-ghost" :disabled="busy" @click="act('update')">
           {{ updating ? 'Updating…' : 'Update' }}
         </button>
-        <button class="btn-ghost text-danger" @click="remove">Remove</button>
+        <button class="btn-ghost text-danger" :disabled="busy" @click="remove">Remove</button>
       </div>
     </div>
 
@@ -219,6 +269,13 @@ onUnmounted(() => {
           >
             Shell
           </button>
+          <button
+            class="btn-ghost py-1"
+            :class="{ 'text-accent': bottomPanel === 'inspect' }"
+            @click="bottomPanel = 'inspect'"
+          >
+            Inspect
+          </button>
         </div>
         <div v-if="bottomPanel === 'logs'" class="flex gap-2 text-xs">
           <button class="btn-ghost py-1" @click="logShowTS = !logShowTS">
@@ -235,6 +292,10 @@ onUnmounted(() => {
         class="log-panel"
         @scroll="onLogScroll"
       >{{ displayLogs || '(waiting for logs...)' }}</pre>
+      <pre
+        v-else-if="bottomPanel === 'inspect'"
+        class="log-panel"
+      >{{ inspectText }}</pre>
       <TerminalPanel
         v-else
         :container-id="route.params.id"
@@ -243,4 +304,5 @@ onUnmounted(() => {
       />
     </div>
   </div>
+  <p v-else class="text-muted">Container not found.</p>
 </template>

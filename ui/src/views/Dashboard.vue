@@ -4,11 +4,15 @@ import { useRouter } from 'vue-router'
 import { useEngineStore } from '@/stores/engine'
 import { containerAction, updateContainer, removeImage } from '@/api/client'
 import { promptRemovePreviousImage, fmtBytes } from '@/lib/images'
+import { useUiStore } from '@/stores/ui'
+import { errorMessage } from '@/lib/errors'
 import Sparkline from '@/components/Sparkline.vue'
 
 const store = useEngineStore()
+const ui = useUiStore()
 const router = useRouter()
 const updating = ref({})
+const pending = ref({})
 const search = ref('')
 const sortKey = ref('name')
 const sortDir = ref('asc')
@@ -127,6 +131,10 @@ function statusLabel(c) {
   return c.state
 }
 
+function isBusy(id) {
+  return !!updating.value[id] || !!pending.value[id]
+}
+
 async function act(id, action) {
   if (action === 'update') {
     updating.value = { ...updating.value, [id]: true }
@@ -138,7 +146,7 @@ async function act(id, action) {
         await store.fetch()
       }
     } catch (err) {
-      alert(err.response?.data?.error || err.message || 'Update failed')
+      ui.setError(errorMessage(err, 'Update failed'))
     } finally {
       const next = { ...updating.value }
       delete next[id]
@@ -146,8 +154,17 @@ async function act(id, action) {
     }
     return
   }
-  await containerAction(id, action)
-  await store.fetch()
+  pending.value = { ...pending.value, [id]: action }
+  try {
+    await containerAction(id, action)
+    await store.fetch()
+  } catch (err) {
+    ui.setError(errorMessage(err, `${action} failed`))
+  } finally {
+    const next = { ...pending.value }
+    delete next[id]
+    pending.value = next
+  }
 }
 
 function fmtStat(v) {
@@ -220,12 +237,12 @@ function fmtStat(v) {
                 <span v-else class="text-muted">{{ c.health || '-' }}</span>
               </td>
               <td class="py-2 space-x-1">
-                <button class="btn-ghost text-xs" @click="act(c.id, 'start')">Start</button>
-                <button class="btn-ghost text-xs" @click="act(c.id, 'stop')">Stop</button>
-                <button class="btn-ghost text-xs" @click="act(c.id, 'restart')">Restart</button>
+                <button class="btn-ghost text-xs" :disabled="isBusy(c.id)" @click="act(c.id, 'start')">Start</button>
+                <button class="btn-ghost text-xs" :disabled="isBusy(c.id)" @click="act(c.id, 'stop')">Stop</button>
+                <button class="btn-ghost text-xs" :disabled="isBusy(c.id)" @click="act(c.id, 'restart')">Restart</button>
                 <button
                   class="btn-ghost text-xs"
-                  :disabled="updating[c.id]"
+                  :disabled="isBusy(c.id)"
                   @click="act(c.id, 'update')"
                 >
                   {{ updating[c.id] ? 'Updating…' : 'Update' }}

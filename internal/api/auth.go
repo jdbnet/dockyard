@@ -24,6 +24,8 @@ func (s *Server) validSession(r *http.Request) bool {
 	if err != nil {
 		return false
 	}
+	s.sessionMu.Lock()
+	defer s.sessionMu.Unlock()
 	return cookie.Value != "" && cookie.Value == s.sessionToken
 }
 
@@ -78,9 +80,13 @@ func (s *Server) handleAuthLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	s.sessionMu.Lock()
+	token := s.rotateSessionToken()
+	s.sessionMu.Unlock()
+
 	http.SetCookie(w, &http.Cookie{
 		Name:     sessionCookieName,
-		Value:    s.sessionToken,
+		Value:    token,
 		Path:     "/",
 		HttpOnly: true,
 		SameSite: http.SameSiteLaxMode,
@@ -90,6 +96,10 @@ func (s *Server) handleAuthLogin(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleAuthLogout(w http.ResponseWriter, r *http.Request) {
+	s.sessionMu.Lock()
+	s.rotateSessionToken()
+	s.sessionMu.Unlock()
+
 	http.SetCookie(w, &http.Cookie{
 		Name:     sessionCookieName,
 		Value:    "",

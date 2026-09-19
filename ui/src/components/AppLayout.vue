@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import {
   Menu, X, LayoutDashboard, Layers, Image, HardDrive, Network, Plug, LogOut, Sun, Moon,
@@ -7,12 +7,14 @@ import {
 import { useEngineStore } from '@/stores/engine'
 import { useAuthStore } from '@/stores/auth'
 import { useThemeStore } from '@/stores/theme'
+import { useUiStore } from '@/stores/ui'
 import { getHealth } from '@/api/client'
 
 const route = useRoute()
 const store = useEngineStore()
 const auth = useAuthStore()
 const theme = useThemeStore()
+const ui = useUiStore()
 const sidebarOpen = ref(false)
 const appVersion = ref('')
 
@@ -42,6 +44,8 @@ const pageTitle = computed(() => {
   const item = nav.find((n) => n.match(route.path))
   return item?.label || 'Dockyard'
 })
+
+watch(() => route.fullPath, () => ui.clear())
 
 function onToggleTheme() {
   theme.toggle()
@@ -115,6 +119,18 @@ async function logout() {
         <span class="truncate font-semibold text-heading">{{ pageTitle }}</span>
       </header>
       <main class="min-h-0 flex-1 overflow-y-auto p-4 md:p-6 text-heading">
+        <div
+          v-if="ui.message"
+          class="mb-4 flex items-start gap-3 rounded-lg border px-3 py-2 text-sm"
+          :class="ui.tone === 'info'
+            ? 'border-accent/40 bg-accent/10 text-accent'
+            : 'border-red-500/40 bg-red-500/10 text-danger'"
+        >
+          <span class="min-w-0 flex-1 whitespace-pre-wrap">{{ ui.message }}</span>
+          <button type="button" class="shrink-0 text-current" @click="ui.clear()">
+            <X class="h-4 w-4" />
+          </button>
+        </div>
         <slot />
       </main>
     </div>

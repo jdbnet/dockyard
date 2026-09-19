@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/jdbnet/dockyard/internal/config"
@@ -20,6 +21,7 @@ type Server struct {
 	version      string
 	server       *http.Server
 	mux          *http.ServeMux
+	sessionMu    sync.Mutex
 	sessionToken string
 }
 
@@ -42,6 +44,13 @@ func NewServer(cfg *config.Config, eng *engine.Engine, version string) *Server {
 	s.registerRoutes()
 	s.server.Handler = cors(s.authMiddleware(mux))
 	return s
+}
+
+func (s *Server) rotateSessionToken() string {
+	token := make([]byte, 32)
+	_, _ = rand.Read(token)
+	s.sessionToken = hex.EncodeToString(token)
+	return s.sessionToken
 }
 
 func cors(next http.Handler) http.Handler {

@@ -1,36 +1,50 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { getImages, removeImage, pruneUnusedImages } from '@/api/client'
+import { fmtSize } from '@/lib/images'
+import { useEngineStore } from '@/stores/engine'
+import { useUiStore } from '@/stores/ui'
+import { errorMessage } from '@/lib/errors'
 
 const images = ref([])
 const pruning = ref(false)
+const removing = ref('')
+const store = useEngineStore()
+const ui = useUiStore()
 
 const unusedCount = computed(() => images.value.filter((img) => img.unused).length)
 
 onMounted(async () => {
-  images.value = await getImages()
+  await refresh()
+})
+
+watch(() => store.lastEvent, (ev) => {
+  if (ev?.type === 'image' || ev?.type === 'container') refresh()
 })
 
 async function refresh() {
-  images.value = await getImages()
+  try {
+    images.value = await getImages()
+  } catch (err) {
+    ui.setError(errorMessage(err, 'Failed to load images'))
+  }
 }
 
 function tag(img) {
   return img.repo_tags?.length ? img.repo_tags.join(', ') : '<none>'
 }
 
-function fmtSize(b) {
-  if (b < 1024) return `${b} B`
-  const units = ['KB', 'MB', 'GB']
-  let i = -1
-  do { b /= 1024; i++ } while (b >= 1024 && i < units.length - 1)
-  return `${b.toFixed(1)} ${units[i]}`
-}
-
 async function remove(id) {
   if (!confirm('Remove this image?')) return
-  await removeImage(id)
-  await refresh()
+  removing.value = id
+  try {
+    await removeImage(id)
+    await refresh()
+  } catch (err) {
+    ui.setError(errorMessage(err, 'Remove failed'))
+  } finally {
+    removing.value = ''
+  }
 }
 
 async function pruneUnused() {
@@ -45,10 +59,10 @@ async function pruneUnused() {
     } else if (result.deleted === 0 && result.attempted > 0) {
       msg += '\n\nNo images were removed.'
     }
-    alert(msg)
+    ui.setInfo(msg)
     await refresh()
   } catch (err) {
-    alert(err.response?.data?.error || err.message || 'Prune failed')
+    ui.setError(errorMessage(err, 'Prune failed'))
   } finally {
     pruning.value = false
   }
@@ -88,7 +102,13 @@ async function pruneUnused() {
               <span v-if="img.unused" class="badge badge-warn">unused</span>
             </td>
             <td class="py-2">
-              <button class="btn-ghost text-xs text-danger" @click="remove(img.id)">Remove</button>
+              <button
+                class="btn-ghost text-xs text-danger"
+                :disabled="!!removing"
+                @click="remove(img.id)"
+              >
+                Remove
+              </button>
             </td>
           </tr>
         </tbody>

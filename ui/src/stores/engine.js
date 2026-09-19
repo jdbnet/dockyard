@@ -1,5 +1,7 @@
 import { defineStore } from 'pinia'
 import { getContainers, wsURL } from '@/api/client'
+import { useUiStore } from '@/stores/ui'
+import { errorMessage } from '@/lib/errors'
 
 const FLAT_VIEW_KEY = 'dockyard-flat-view'
 
@@ -21,11 +23,15 @@ export const useEngineStore = defineStore('engine', {
   }),
   actions: {
     async fetch() {
-      if (this.flatView) {
-        const containers = await getContainers(true)
-        this.composeProjects = [{ name: 'All containers', containers }]
-      } else {
-        this.composeProjects = await getContainers(false)
+      try {
+        if (this.flatView) {
+          const containers = await getContainers(true)
+          this.composeProjects = [{ name: 'All containers', containers }]
+        } else {
+          this.composeProjects = await getContainers(false)
+        }
+      } catch (err) {
+        useUiStore().setError(errorMessage(err, 'Failed to load containers'))
       }
     },
     connectEvents() {

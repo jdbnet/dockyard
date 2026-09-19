@@ -1,14 +1,31 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { getPorts } from '@/api/client'
+import { useEngineStore } from '@/stores/engine'
+import { useUiStore } from '@/stores/ui'
+import { errorMessage } from '@/lib/errors'
 
 const ports = ref([])
 const router = useRouter()
+const store = useEngineStore()
+const ui = useUiStore()
 
 onMounted(async () => {
-  ports.value = await getPorts()
+  await refresh()
 })
+
+watch(() => store.lastEvent, (ev) => {
+  if (ev?.type === 'container') refresh()
+})
+
+async function refresh() {
+  try {
+    ports.value = await getPorts()
+  } catch (err) {
+    ui.setError(errorMessage(err, 'Failed to load ports'))
+  }
+}
 
 function stackLabel(p) {
   if (!p.compose_project) return '-'

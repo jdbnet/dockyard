@@ -1,17 +1,42 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { getNetworks, removeNetwork } from '@/api/client'
+import { useEngineStore } from '@/stores/engine'
+import { useUiStore } from '@/stores/ui'
+import { errorMessage } from '@/lib/errors'
 
 const networks = ref([])
+const removing = ref('')
+const store = useEngineStore()
+const ui = useUiStore()
 
 onMounted(async () => {
-  networks.value = await getNetworks()
+  await refresh()
 })
+
+watch(() => store.lastEvent, (ev) => {
+  if (ev?.type === 'network' || ev?.type === 'container') refresh()
+})
+
+async function refresh() {
+  try {
+    networks.value = await getNetworks()
+  } catch (err) {
+    ui.setError(errorMessage(err, 'Failed to load networks'))
+  }
+}
 
 async function remove(id) {
   if (!confirm('Remove this network?')) return
-  await removeNetwork(id)
-  networks.value = await getNetworks()
+  removing.value = id
+  try {
+    await removeNetwork(id)
+    await refresh()
+  } catch (err) {
+    ui.setError(errorMessage(err, 'Remove failed'))
+  } finally {
+    removing.value = ''
+  }
 }
 </script>
 
@@ -38,6 +63,7 @@ async function remove(id) {
               <button
                 v-if="!['bridge','host','none'].includes(n.name)"
                 class="btn-ghost text-xs text-danger"
+                :disabled="!!removing"
                 @click="remove(n.id)"
               >
                 Remove
