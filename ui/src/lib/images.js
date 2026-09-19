@@ -7,11 +7,16 @@ export function imageLabel(img) {
 export function fmtSize(b) {
   if (b == null) return ''
   if (b < 1024) return `${b} B`
-  const units = ['KB', 'MB', 'GB']
+  const units = ['KB', 'MB', 'GB', 'TB', 'PB']
   let i = -1
   let size = b
   do { size /= 1024; i++ } while (size >= 1024 && i < units.length - 1)
   return `${size.toFixed(1)} ${units[i]}`
+}
+
+export function fmtBytes(b) {
+  if (b == null || b === 0) return '-'
+  return fmtSize(b)
 }
 
 export async function promptRemovePreviousImage(img) {

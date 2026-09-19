@@ -1,10 +1,20 @@
 import { defineStore } from 'pinia'
 import { getContainers, wsURL } from '@/api/client'
 
+const FLAT_VIEW_KEY = 'dockyard-flat-view'
+
+function readFlatView() {
+  return localStorage.getItem(FLAT_VIEW_KEY) === 'true'
+}
+
+function writeFlatView(flat) {
+  localStorage.setItem(FLAT_VIEW_KEY, flat ? 'true' : 'false')
+}
+
 export const useEngineStore = defineStore('engine', {
   state: () => ({
     composeProjects: [],
-    flatView: false,
+    flatView: readFlatView(),
     connected: false,
     lastEvent: null,
     eventsWS: null,
@@ -35,6 +45,7 @@ export const useEngineStore = defineStore('engine', {
     },
     toggleFlat() {
       this.flatView = !this.flatView
+      writeFlatView(this.flatView)
       this.fetch()
     },
   },

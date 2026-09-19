@@ -11,6 +11,7 @@ import (
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/events"
 	"github.com/docker/docker/api/types/image"
+	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/api/types/volume"
 	"github.com/docker/docker/client"
@@ -294,11 +295,28 @@ type PruneImagesReport struct {
 	Errors         []string
 }
 
+func volumeNamesInUse(containers []container.Summary) map[string]struct{} {
+	inUse := make(map[string]struct{})
+	for _, ctr := range containers {
+		for _, m := range ctr.Mounts {
+			if m.Type == mount.TypeVolume && m.Name != "" {
+				inUse[m.Name] = struct{}{}
+			}
+		}
+	}
+	return inUse
+}
+
 func (c *Client) ListVolumes(ctx context.Context) ([]VolumeSummary, error) {
 	list, err := c.cli.VolumeList(ctx, volume.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
+	containers, err := c.cli.ContainerList(ctx, container.ListOptions{All: true})
+	if err != nil {
+		return nil, err
+	}
+	inUse := volumeNamesInUse(containers)
 	out := make([]VolumeSummary, 0, len(list.Volumes))
 	for _, vol := range list.Volumes {
 		created := time.Time{}
@@ -307,13 +325,13 @@ func (c *Client) ListVolumes(ctx context.Context) ([]VolumeSummary, error) {
 				created = t
 			}
 		}
-		unused := vol.UsageData == nil || vol.UsageData.RefCount == 0
+		_, used := inUse[vol.Name]
 		out = append(out, VolumeSummary{
 			Name:       vol.Name,
 			Driver:     vol.Driver,
 			Mountpoint: vol.Mountpoint,
 			Scope:      vol.Scope,
-			Unused:     unused,
+			Unused:     !used,
 			CreatedAt:  created,
 		})
 	}

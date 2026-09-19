@@ -17,6 +17,9 @@ func TestLoadConfigDefaults(t *testing.T) {
 	if cfg.Web.Port != 8080 {
 		t.Fatalf("unexpected port: %d", cfg.Web.Port)
 	}
+	if cfg.Compose.StacksDir != "/opt/stacks" {
+		t.Fatalf("unexpected stacks dir: %s", cfg.Compose.StacksDir)
+	}
 }
 
 func TestEnvOverride(t *testing.T) {

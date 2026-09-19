@@ -4,7 +4,7 @@ import { useRoute } from 'vue-router'
 import uPlot from 'uplot'
 import 'uplot/dist/uPlot.min.css'
 import { getContainer, containerAction, removeContainer, updateContainer, removeImage, wsURL } from '@/api/client'
-import { promptRemovePreviousImage } from '@/lib/images'
+import { promptRemovePreviousImage, fmtBytes } from '@/lib/images'
 import TerminalPanel from '@/components/TerminalPanel.vue'
 
 const route = useRoute()
@@ -185,10 +185,10 @@ onUnmounted(() => {
       <div class="card">
         <div class="mb-2 flex items-baseline justify-between">
           <h3 class="text-sm text-muted">Memory</h3>
-          <span class="text-lg font-semibold text-stat-secondary">{{ fmtPct(liveStats.mem_pct ?? container.mem_pct) }}</span>
+          <span class="text-lg font-semibold text-stat-secondary">{{ fmtBytes(liveStats.mem_bytes ?? container.mem_bytes) }}</span>
         </div>
         <div ref="memChartEl" class="min-h-[160px]" />
-        <p v-if="!liveStats.mem_pct && !container.mem_pct" class="mt-2 text-xs text-muted">Collecting metrics…</p>
+        <p v-if="containerRunning && !liveStats.mem_bytes && !container.mem_bytes" class="mt-2 text-xs text-muted">Collecting metrics…</p>
       </div>
     </div>
 

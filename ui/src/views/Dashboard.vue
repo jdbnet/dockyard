@@ -3,12 +3,24 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useEngineStore } from '@/stores/engine'
 import { containerAction, updateContainer, removeImage } from '@/api/client'
-import { promptRemovePreviousImage } from '@/lib/images'
+import { promptRemovePreviousImage, fmtBytes } from '@/lib/images'
 import Sparkline from '@/components/Sparkline.vue'
 
 const store = useEngineStore()
 const router = useRouter()
 const updating = ref({})
+const search = ref('')
+const sortKey = ref('name')
+const sortDir = ref('asc')
+
+const columns = [
+  { key: 'name', label: 'Name' },
+  { key: 'status', label: 'Status' },
+  { key: 'cpu', label: 'CPU' },
+  { key: 'memory', label: 'Memory' },
+  { key: 'uptime', label: 'Uptime' },
+  { key: 'health', label: 'Health' },
+]
 
 onMounted(() => {
   if (store.composeProjects.length === 0) {
@@ -16,15 +28,90 @@ onMounted(() => {
   }
 })
 
+function matchesName(name, q) {
+  if (!q) return true
+  return (name || '').toLowerCase().includes(q)
+}
+
+function cmpStr(a, b) {
+  return a.localeCompare(b, undefined, { sensitivity: 'base' })
+}
+
+function cmpNum(a, b, dir) {
+  const aMissing = a == null || Number.isNaN(a)
+  const bMissing = b == null || Number.isNaN(b)
+  if (aMissing && bMissing) return 0
+  if (aMissing) return 1
+  if (bMissing) return -1
+  return (a - b) * dir
+}
+
+function sortValue(c, key) {
+  switch (key) {
+    case 'name':
+      return c.name || ''
+    case 'status':
+      return c.state || ''
+    case 'cpu':
+      return c.cpu_pct
+    case 'memory':
+      return c.mem_bytes
+    case 'uptime':
+      return c.uptime || ''
+    case 'health':
+      return c.restart_loop ? 'restart loop' : (c.health || '')
+    default:
+      return ''
+  }
+}
+
+function sortContainers(list) {
+  const key = sortKey.value
+  const dir = sortDir.value === 'asc' ? 1 : -1
+  const numeric = key === 'cpu' || key === 'memory'
+  return [...list].sort((a, b) => {
+    if (numeric) {
+      return cmpNum(sortValue(a, key), sortValue(b, key), dir)
+    }
+    return cmpStr(String(sortValue(a, key)), String(sortValue(b, key))) * dir
+  })
+}
+
+function setSort(key) {
+  if (sortKey.value === key) {
+    sortDir.value = sortDir.value === 'asc' ? 'desc' : 'asc'
+    return
+  }
+  sortKey.value = key
+  sortDir.value = 'asc'
+}
+
 const projects = computed(() => {
+  const q = search.value.trim().toLowerCase()
+  let list
   if (store.flatView) {
     const flat = store.composeProjects
     if (flat.length && flat[0].name !== undefined && flat[0].containers) {
-      return flat
+      list = flat
+    } else {
+      list = [{ name: 'All containers', containers: store.composeProjects }]
     }
-    return [{ name: 'All containers', containers: store.composeProjects }]
+  } else {
+    list = store.composeProjects
   }
-  return store.composeProjects
+
+  const filtered = list.map((p) => ({
+    ...p,
+    containers: (p.containers || []).filter((c) => matchesName(c.name, q)),
+  })).filter((p) => !q || p.containers.length > 0)
+
+  if (!store.flatView) {
+    return filtered
+  }
+  return filtered.map((p) => ({
+    ...p,
+    containers: sortContainers(p.containers),
+  }))
 })
 
 function statusBadge(c) {
@@ -72,6 +159,12 @@ function fmtStat(v) {
 <template>
   <div class="space-y-4">
     <div class="page-toolbar">
+      <input
+        v-model="search"
+        type="search"
+        class="input-field mr-auto w-full max-w-sm"
+        placeholder="Search containers"
+      />
       <button class="btn-ghost" @click="store.toggleFlat()">
         {{ store.flatView ? 'Compose view' : 'Flat view' }}
       </button>
@@ -87,12 +180,18 @@ function fmtStat(v) {
         <table class="w-full text-left text-sm">
           <thead class="text-muted">
             <tr>
-              <th class="pb-2 pr-4">Name</th>
-              <th class="pb-2 pr-4">Status</th>
-              <th class="pb-2 pr-4">CPU</th>
-              <th class="pb-2 pr-4">Memory</th>
-              <th class="pb-2 pr-4">Uptime</th>
-              <th class="pb-2 pr-4">Health</th>
+              <th v-for="col in columns" :key="col.key" class="pb-2 pr-4">
+                <button
+                  v-if="store.flatView"
+                  type="button"
+                  class="inline-flex items-center gap-1 hover:text-heading"
+                  @click="setSort(col.key)"
+                >
+                  {{ col.label }}
+                  <span v-if="sortKey === col.key" class="text-accent">{{ sortDir === 'asc' ? '↑' : '↓' }}</span>
+                </button>
+                <span v-else>{{ col.label }}</span>
+              </th>
               <th class="pb-2">Actions</th>
             </tr>
           </thead>
@@ -114,7 +213,7 @@ function fmtStat(v) {
                 <span class="badge" :class="statusBadge(c)">{{ statusLabel(c) }}</span>
               </td>
               <td class="py-2 pr-4">{{ fmtStat(c.cpu_pct) }}</td>
-              <td class="py-2 pr-4">{{ fmtStat(c.mem_pct) }}</td>
+              <td class="py-2 pr-4">{{ fmtBytes(c.mem_bytes) }}</td>
               <td class="py-2 pr-4 text-muted">{{ c.uptime || '-' }}</td>
               <td class="py-2 pr-4">
                 <span v-if="c.restart_loop" class="badge badge-error">restart loop</span>

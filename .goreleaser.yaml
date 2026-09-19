@@ -51,6 +51,10 @@ nfpms:
       - src: config.yaml
         dst: /etc/dockyard/config.yaml
         type: config|noreplace
+      - dst: /opt/stacks
+        type: dir
+        file_info:
+          mode: 0755
     deb:
       compression: gzip
 

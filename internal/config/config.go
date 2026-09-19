@@ -99,7 +99,7 @@ func defaultConfig() *Config {
 	return &Config{
 		Docker: DockerConfig{Socket: "/var/run/docker.sock"},
 		Compose: ComposeConfig{
-			StacksDir: "~/.local/share/dockyard/stacks",
+			StacksDir: "/opt/stacks",
 		},
 		Web: WebConfig{Enabled: false, Port: 8080, Bind: "127.0.0.1"},
 		Stats: StatsConfig{

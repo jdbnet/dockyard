@@ -1,12 +1,14 @@
 <script setup>
 import { ref, onMounted, computed, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
+import { Loader2 } from 'lucide-vue-next'
 import ComposeEditor from '@/components/ComposeEditor.vue'
 import {
-  getStackCompose, saveStackCompose, stackUp, stackDown, stackUpdate,
+  getStackCompose, saveStackCompose, stackUp, stackDown, stackUpdate, deleteStack,
 } from '@/api/client'
 
 const route = useRoute()
+const router = useRouter()
 const name = computed(() => route.params.name)
 const content = ref('')
 const managed = ref(true)
@@ -15,6 +17,13 @@ const path = ref('')
 const loading = ref(true)
 const saved = ref(false)
 const saveError = ref('')
+const busy = ref('')
+
+const busyLabels = {
+  up: 'Starting…',
+  down: 'Stopping…',
+  update: 'Updating…',
+}
 
 async function load() {
   loading.value = true
@@ -43,8 +52,28 @@ async function save() {
 }
 
 async function act(action) {
-  const fn = { up: stackUp, down: stackDown, update: stackUpdate }[action]
-  await fn(name.value)
+  busy.value = action
+  try {
+    const fn = { up: stackUp, down: stackDown, update: stackUpdate }[action]
+    await fn(name.value)
+  } catch (err) {
+    const fallback = { up: 'Up failed', down: 'Down failed', update: 'Update failed' }[action]
+    alert(err.response?.data?.error || err.message || fallback)
+  } finally {
+    busy.value = ''
+  }
+}
+
+async function remove() {
+  if (!managed.value) return
+  if (!confirm(`Delete stack ${name.value}?`)) return
+  saveError.value = ''
+  try {
+    await deleteStack(name.value)
+    router.push('/stacks')
+  } catch (e) {
+    saveError.value = e.response?.data?.error || e.message || 'Delete failed'
+  }
 }
 </script>
 
@@ -54,10 +83,20 @@ async function act(action) {
     <div class="flex flex-wrap items-center justify-between gap-3">
       <p v-if="path" class="text-xs font-mono text-muted">{{ path }}</p>
       <div class="flex gap-2 flex-wrap ml-auto">
-        <button class="btn-primary" :disabled="!editable" @click="save">Save</button>
-        <button class="btn-ghost" @click="act('up')">Up</button>
-        <button class="btn-ghost" @click="act('down')">Down</button>
-        <button class="btn-ghost" @click="act('update')">Update images</button>
+        <button class="btn-primary" :disabled="!editable || !!busy" @click="save">Save</button>
+        <button class="btn-ghost gap-1.5" :disabled="!!busy" @click="act('up')">
+          <Loader2 v-if="busy === 'up'" class="h-4 w-4 animate-spin" />
+          {{ busy === 'up' ? busyLabels.up : 'Up' }}
+        </button>
+        <button class="btn-ghost gap-1.5" :disabled="!!busy" @click="act('down')">
+          <Loader2 v-if="busy === 'down'" class="h-4 w-4 animate-spin" />
+          {{ busy === 'down' ? busyLabels.down : 'Down' }}
+        </button>
+        <button class="btn-ghost gap-1.5" :disabled="!!busy" @click="act('update')">
+          <Loader2 v-if="busy === 'update'" class="h-4 w-4 animate-spin" />
+          {{ busy === 'update' ? busyLabels.update : 'Update images' }}
+        </button>
+        <button v-if="managed" class="btn-ghost text-danger" :disabled="!!busy" @click="remove">Delete</button>
         <span v-if="saved" class="text-accent text-sm self-center">Saved</span>
         <span v-if="saveError" class="text-danger text-sm self-center">{{ saveError }}</span>
       </div>

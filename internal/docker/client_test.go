@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/mount"
 )
 
 func TestPublicPortStrings_dedupesIPv4IPv6(t *testing.T) {
@@ -36,5 +37,51 @@ func TestPublicPortStrings_skipsUnpublished(t *testing.T) {
 	})
 	if len(ports) != 0 {
 		t.Fatalf("expected no ports, got %v", ports)
+	}
+}
+
+func TestVolumeNamesInUse_namedVolume(t *testing.T) {
+	inUse := volumeNamesInUse([]container.Summary{
+		{
+			Mounts: []container.MountPoint{
+				{Type: mount.TypeVolume, Name: "data"},
+				{Type: mount.TypeBind, Source: "/host/path"},
+			},
+		},
+	})
+	if _, ok := inUse["data"]; !ok {
+		t.Fatal("expected data volume in use")
+	}
+	if len(inUse) != 1 {
+		t.Fatalf("expected 1 volume, got %d", len(inUse))
+	}
+}
+
+func TestVolumeNamesInUse_ignoresBindAndEmpty(t *testing.T) {
+	inUse := volumeNamesInUse([]container.Summary{
+		{
+			Mounts: []container.MountPoint{
+				{Type: mount.TypeBind, Name: "not-a-volume", Source: "/x"},
+				{Type: mount.TypeVolume, Name: ""},
+				{Type: mount.TypeTmpfs, Name: "tmp"},
+			},
+		},
+	})
+	if len(inUse) != 0 {
+		t.Fatalf("expected empty, got %v", inUse)
+	}
+}
+
+func TestVolumeNamesInUse_stoppedContainerStillCounts(t *testing.T) {
+	inUse := volumeNamesInUse([]container.Summary{
+		{
+			State: "exited",
+			Mounts: []container.MountPoint{
+				{Type: mount.TypeVolume, Name: "pg-data"},
+			},
+		},
+	})
+	if _, ok := inUse["pg-data"]; !ok {
+		t.Fatal("stopped container volume should still count as used")
 	}
 }

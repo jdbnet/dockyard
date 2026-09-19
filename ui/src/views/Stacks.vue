@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import ComposeEditor from '@/components/ComposeEditor.vue'
 import {
@@ -8,6 +8,8 @@ import {
 
 const stacks = ref([])
 const router = useRouter()
+const search = ref('')
+const updating = ref({})
 const showNew = ref(false)
 const newName = ref('')
 const createError = ref('')
@@ -28,9 +30,29 @@ async function refresh() {
   stacks.value = await getStacks()
 }
 
+const filteredStacks = computed(() => {
+  const q = search.value.trim().toLowerCase()
+  if (!q) return stacks.value
+  return stacks.value.filter((s) => (s.name || '').toLowerCase().includes(q))
+})
+
 async function act(name, action) {
   if (action === 'delete' && !confirm(`Delete stack ${name}?`)) return
-  const fn = { up: stackUp, down: stackDown, update: stackUpdate, delete: deleteStack }[action]
+  if (action === 'update') {
+    updating.value = { ...updating.value, [name]: true }
+    try {
+      await stackUpdate(name)
+      await refresh()
+    } catch (err) {
+      alert(err.response?.data?.error || err.message || 'Update failed')
+    } finally {
+      const next = { ...updating.value }
+      delete next[name]
+      updating.value = next
+    }
+    return
+  }
+  const fn = { up: stackUp, down: stackDown, delete: deleteStack }[action]
   await fn(name)
   await refresh()
 }
@@ -64,6 +86,12 @@ async function submitNew() {
 <template>
   <div class="space-y-4">
     <div class="page-toolbar">
+      <input
+        v-model="search"
+        type="search"
+        class="input-field mr-auto w-full max-w-sm"
+        placeholder="Search stacks"
+      />
       <button class="btn-primary" @click="showNew = !showNew">{{ showNew ? 'Cancel' : 'New stack' }}</button>
     </div>
 
@@ -86,7 +114,7 @@ async function submitNew() {
       </div>
     </div>
 
-    <div class="card overflow-x-auto">
+    <div v-if="filteredStacks.length" class="card overflow-x-auto">
       <table class="w-full text-left text-sm">
         <thead class="text-muted">
           <tr>
@@ -98,7 +126,7 @@ async function submitNew() {
           </tr>
         </thead>
         <tbody>
-          <tr v-for="s in stacks" :key="s.name" class="table-row-hover">
+          <tr v-for="s in filteredStacks" :key="s.name" class="table-row-hover">
             <td class="py-2">
               <button class="text-accent hover:underline" @click="router.push(`/stacks/${s.name}`)">
                 {{ s.name }}
@@ -113,12 +141,19 @@ async function submitNew() {
             <td class="py-2 space-x-1">
               <button class="btn-ghost text-xs" @click="act(s.name, 'up')">Up</button>
               <button class="btn-ghost text-xs" @click="act(s.name, 'down')">Down</button>
-              <button class="btn-ghost text-xs" @click="act(s.name, 'update')">Update</button>
+              <button
+                class="btn-ghost text-xs"
+                :disabled="updating[s.name]"
+                @click="act(s.name, 'update')"
+              >
+                {{ updating[s.name] ? 'Updating…' : 'Update' }}
+              </button>
               <button v-if="s.managed" class="btn-ghost text-xs text-danger" @click="act(s.name, 'delete')">Delete</button>
             </td>
           </tr>
         </tbody>
       </table>
     </div>
+    <p v-else class="text-muted">No stacks found.</p>
   </div>
 </template>
