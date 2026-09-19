@@ -99,9 +99,11 @@ dockers:
       - "--label=org.opencontainers.image.source=https://github.com/jdbnet/dockyard"
 
 docker_manifests:
-  - name_templates:
-      - "ghcr.io/jdbnet/dockyard:{{ .Version }}"
-      - "ghcr.io/jdbnet/dockyard:latest"
+  - name_template: "ghcr.io/jdbnet/dockyard:{{ .Version }}"
+    image_templates:
+      - "ghcr.io/jdbnet/dockyard:{{ .Version }}-amd64"
+      - "ghcr.io/jdbnet/dockyard:{{ .Version }}-arm64"
+  - name_template: "ghcr.io/jdbnet/dockyard:latest"
     image_templates:
       - "ghcr.io/jdbnet/dockyard:{{ .Version }}-amd64"
       - "ghcr.io/jdbnet/dockyard:{{ .Version }}-arm64"
