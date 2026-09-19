@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Loader2 } from 'lucide-vue-next'
+import { Loader2 } from '@lucide/vue'
 import ComposeEditor from '@/components/ComposeEditor.vue'
 import {
   getStackCompose, saveStackCompose, stackUp, stackDown, stackUpdate, deleteStack,

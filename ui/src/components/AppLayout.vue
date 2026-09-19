@@ -3,7 +3,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import {
   Menu, X, LayoutDashboard, Layers, Image, HardDrive, Network, Plug, LogOut, Sun, Moon,
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 import { useEngineStore } from '@/stores/engine'
 import { useAuthStore } from '@/stores/auth'
 import { useThemeStore } from '@/stores/theme'
