@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { getPorts } from '@/api/client'
 import { useEngineStore } from '@/stores/engine'
@@ -7,9 +7,16 @@ import { useUiStore } from '@/stores/ui'
 import { errorMessage } from '@/lib/errors'
 
 const ports = ref([])
+const search = ref('')
 const router = useRouter()
 const store = useEngineStore()
 const ui = useUiStore()
+
+const filteredPorts = computed(() => {
+  const q = search.value.trim().toLowerCase()
+  if (!q) return ports.value
+  return ports.value.filter((p) => (p.container_name || '').toLowerCase().includes(q))
+})
 
 onMounted(async () => {
   await refresh()
@@ -42,6 +49,14 @@ function stateClass(state) {
 
 <template>
   <div class="space-y-4">
+    <div class="page-toolbar">
+      <input
+        v-model="search"
+        type="search"
+        class="input-field mr-auto w-full max-w-sm"
+        placeholder="Search ports"
+      />
+    </div>
     <p class="text-sm text-muted">Host ports published by running containers.</p>
     <div class="card overflow-x-auto">
       <table class="w-full text-left text-sm">
@@ -56,10 +71,10 @@ function stateClass(state) {
           </tr>
         </thead>
         <tbody>
-          <tr v-if="ports.length === 0">
+          <tr v-if="filteredPorts.length === 0">
             <td colspan="6" class="py-6 text-center text-muted">No published ports</td>
           </tr>
-          <tr v-for="(p, i) in ports" :key="`${p.container_id}-${p.binding}-${i}`" class="table-row-hover">
+          <tr v-for="(p, i) in filteredPorts" :key="`${p.container_id}-${p.binding}-${i}`" class="table-row-hover">
             <td class="py-2 font-mono">{{ p.host_port }}</td>
             <td class="py-2 font-mono text-muted">{{ p.container_port }}</td>
             <td class="py-2 uppercase text-muted">{{ p.protocol }}</td>

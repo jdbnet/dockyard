@@ -149,6 +149,7 @@ func (e *Engine) refreshContainers(ctx context.Context) error {
 			ctr.MemPct = pt.MemPct
 			ctr.MemBytes = pt.MemBytes
 		}
+		ctr.Sparkline = e.stats.series(c.ID).Points
 		if c.State == "running" {
 			if insp, err := e.docker.InspectContainer(ctx, c.ID); err == nil {
 				ctr.RestartCount = insp.Summary.RestartCount
@@ -244,17 +245,7 @@ func (e *Engine) pollStats(ctx context.Context) {
 
 func (e *Engine) collectStats(ctx context.Context) {
 	containers := e.store.containersSnapshot()
-	if len(containers) == 0 {
-		list, err := e.docker.ListContainers(ctx, true)
-		if err != nil {
-			return
-		}
-		for _, c := range list {
-			if c.State == "running" {
-				containers = append(containers, Container{ID: c.ID, State: c.State})
-			}
-		}
-	}
+	updated := false
 	for _, c := range containers {
 		if c.State != "running" {
 			continue
@@ -287,9 +278,13 @@ func (e *Engine) collectStats(ctx context.Context) {
 			NetRx:     netRx,
 			NetTx:     netTx,
 		})
+		if pt, ok := e.stats.latest(c.ID); ok {
+			e.store.applyLiveStats(c.ID, pt, e.stats.series(c.ID).Points)
+			updated = true
+		}
 	}
-	if err := e.refreshContainers(ctx); err != nil {
-		log.Printf("stats refresh containers: %v", err)
+	if updated {
+		e.broadcast(Event{Type: "stats", Action: "tick", Timestamp: time.Now()})
 	}
 }
 

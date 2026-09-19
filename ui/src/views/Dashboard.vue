@@ -229,7 +229,12 @@ function fmtStat(v) {
               <td class="py-2 pr-4">
                 <span class="badge" :class="statusBadge(c)">{{ statusLabel(c) }}</span>
               </td>
-              <td class="py-2 pr-4">{{ fmtStat(c.cpu_pct) }}</td>
+              <td class="py-2 pr-4">
+                <span class="inline-flex items-center gap-2">
+                  <Sparkline v-if="c.sparkline?.length" :points="c.sparkline" field="cpu_pct" />
+                  {{ fmtStat(c.cpu_pct) }}
+                </span>
+              </td>
               <td class="py-2 pr-4">{{ fmtBytes(c.mem_bytes) }}</td>
               <td class="py-2 pr-4 text-muted">{{ c.uptime || '-' }}</td>
               <td class="py-2 pr-4">

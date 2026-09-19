@@ -27,6 +27,22 @@ func (s *store) setContainers(list []Container) {
 	s.mu.Unlock()
 }
 
+func (s *store) applyLiveStats(id string, pt StatPoint, spark []StatPoint) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for i := range s.containers {
+		if s.containers[i].ID == id {
+			s.containers[i].CPUPct = pt.CPUPct
+			s.containers[i].MemPct = pt.MemPct
+			s.containers[i].MemBytes = pt.MemBytes
+			sparkCopy := make([]StatPoint, len(spark))
+			copy(sparkCopy, spark)
+			s.containers[i].Sparkline = sparkCopy
+			return
+		}
+	}
+}
+
 func (s *store) containersSnapshot() []Container {
 	s.mu.RLock()
 	defer s.mu.RUnlock()

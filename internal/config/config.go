@@ -3,8 +3,10 @@ package config
 import (
 	"fmt"
 	"log"
+	"net"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"gopkg.in/yaml.v3"
@@ -151,4 +153,16 @@ func (c *Config) Addr() string {
 
 func (c *Config) AuthEnabled() bool {
 	return c.Auth.Username != "" && c.Auth.Password != ""
+}
+
+func (c *Config) WebBindIsLoopback() bool {
+	host := strings.TrimSpace(c.Web.Bind)
+	if host == "" {
+		return false
+	}
+	if host == "localhost" {
+		return true
+	}
+	ip := net.ParseIP(host)
+	return ip != nil && ip.IsLoopback()
 }

@@ -14,7 +14,7 @@ RUN go mod download
 COPY . .
 COPY --from=frontend /build/dist ./ui/dist
 ARG VERSION=dev
-RUN CGO_ENABLED=0 go build -ldflags="-s -w -X main.Version=${VERSION}" -o dockyard ./cmd/dockyard
+RUN CGO_ENABLED=0 go build -ldflags="-s -w -X github.com/jdbnet/dockyard/internal/version.Version=${VERSION}" -o dockyard ./cmd/dockyard
 
 # ── Stage 3: Runtime ──
 FROM alpine:3.20
@@ -22,6 +22,7 @@ RUN apk add --no-cache ca-certificates tzdata wget
 WORKDIR /app
 COPY --from=server /build/dockyard .
 COPY config.yaml ./config.yaml
+ENV DOCKYARD_WEB_BIND=0.0.0.0
 EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
   CMD wget -qO- http://127.0.0.1:8080/api/v1/health || exit 1

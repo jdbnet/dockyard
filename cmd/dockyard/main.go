@@ -77,6 +77,9 @@ func main() {
 
 	var srv *api.Server
 	if cfg.Web.Enabled {
+		if !cfg.WebBindIsLoopback() && !cfg.AuthEnabled() {
+			log.Printf("warning: web UI is bound to %s without authentication; set auth.username and auth.password or bind to 127.0.0.1", cfg.Web.Bind)
+		}
 		srv = api.NewServer(cfg, eng, version.Version)
 		go func() {
 			log.Printf("web UI listening on http://%s", cfg.Addr())

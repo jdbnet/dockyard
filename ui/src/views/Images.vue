@@ -7,12 +7,23 @@ import { useUiStore } from '@/stores/ui'
 import { errorMessage } from '@/lib/errors'
 
 const images = ref([])
+const search = ref('')
 const pruning = ref(false)
 const removing = ref('')
 const store = useEngineStore()
 const ui = useUiStore()
 
 const unusedCount = computed(() => images.value.filter((img) => img.unused).length)
+
+const filteredImages = computed(() => {
+  const q = search.value.trim().toLowerCase()
+  if (!q) return images.value
+  return images.value.filter((img) => {
+    if ((img.short_id || '').toLowerCase().includes(q)) return true
+    if ((img.id || '').toLowerCase().includes(q)) return true
+    return (img.repo_tags || []).some((t) => (t || '').toLowerCase().includes(q))
+  })
+})
 
 onMounted(async () => {
   await refresh()
@@ -72,6 +83,12 @@ async function pruneUnused() {
 <template>
   <div class="space-y-4">
     <div class="page-toolbar">
+      <input
+        v-model="search"
+        type="search"
+        class="input-field mr-auto w-full max-w-sm"
+        placeholder="Search images"
+      />
       <button
         class="btn-ghost text-sm text-warn-accent disabled:opacity-40"
         :disabled="unusedCount === 0 || pruning"
@@ -93,7 +110,7 @@ async function pruneUnused() {
           </tr>
         </thead>
         <tbody>
-          <tr v-for="img in images" :key="img.id" class="table-row-hover">
+          <tr v-for="img in filteredImages" :key="img.id" class="table-row-hover">
             <td class="py-2 font-mono text-xs">{{ img.short_id }}</td>
             <td class="py-2">{{ tag(img) }}</td>
             <td class="py-2">{{ fmtSize(img.size) }}</td>

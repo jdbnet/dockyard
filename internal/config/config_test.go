@@ -34,6 +34,21 @@ func TestEnvOverride(t *testing.T) {
 	os.Unsetenv("DOCKYARD_WEB_PORT")
 }
 
+func TestWebBindIsLoopback(t *testing.T) {
+	cfg := defaultConfig()
+	if !cfg.WebBindIsLoopback() {
+		t.Fatal("default bind should be loopback")
+	}
+	cfg.Web.Bind = "0.0.0.0"
+	if cfg.WebBindIsLoopback() {
+		t.Fatal("0.0.0.0 is not loopback")
+	}
+	cfg.Web.Bind = "localhost"
+	if !cfg.WebBindIsLoopback() {
+		t.Fatal("localhost should be loopback")
+	}
+}
+
 func TestAuthEnabled(t *testing.T) {
 	cfg, err := LoadConfig(filepath.Join(t.TempDir(), "missing.yaml"))
 	if err != nil {

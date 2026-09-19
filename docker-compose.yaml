@@ -1,0 +1,11 @@
+services:
+  dockyard:
+    image: ghcr.io/jdbnet/dockyard:latest
+    container_name: dockyard
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./config.yaml:/app/config.yaml:ro
+      - /opt/stacks:/opt/stacks

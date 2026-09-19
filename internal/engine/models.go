@@ -3,24 +3,25 @@ package engine
 import "time"
 
 type Container struct {
-	ID             string   `json:"id"`
-	ShortID        string   `json:"short_id"`
-	Name           string   `json:"name"`
-	Image          string   `json:"image"`
-	State          string   `json:"state"`
-	Status         string   `json:"status"`
-	ComposeProject string   `json:"compose_project"`
-	ComposeService string   `json:"compose_service"`
-	ComposeWorkDir string   `json:"compose_working_dir"`
-	Health         string   `json:"health"`
-	StartedAt      time.Time `json:"started_at"`
-	Uptime         string   `json:"uptime"`
-	RestartCount   int      `json:"restart_count"`
-	RestartLoop    bool     `json:"restart_loop"`
-	CPUPct         float64  `json:"cpu_pct"`
-	MemPct         float64  `json:"mem_pct"`
-	MemBytes       uint64   `json:"mem_bytes"`
-	Ports          []string `json:"ports"`
+	ID             string      `json:"id"`
+	ShortID        string      `json:"short_id"`
+	Name           string      `json:"name"`
+	Image          string      `json:"image"`
+	State          string      `json:"state"`
+	Status         string      `json:"status"`
+	ComposeProject string      `json:"compose_project"`
+	ComposeService string      `json:"compose_service"`
+	ComposeWorkDir string      `json:"compose_working_dir"`
+	Health         string      `json:"health"`
+	StartedAt      time.Time   `json:"started_at"`
+	Uptime         string      `json:"uptime"`
+	RestartCount   int         `json:"restart_count"`
+	RestartLoop    bool        `json:"restart_loop"`
+	CPUPct         float64     `json:"cpu_pct"`
+	MemPct         float64     `json:"mem_pct"`
+	MemBytes       uint64      `json:"mem_bytes"`
+	Ports          []string    `json:"ports"`
+	Sparkline      []StatPoint `json:"sparkline,omitempty"`
 }
 
 type ComposeProject struct {

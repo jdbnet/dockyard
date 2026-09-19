@@ -81,11 +81,11 @@ Set credentials in `config.yaml` (or via env). When `auth.username` is empty, th
 
 ```yaml
 auth:
-  username: admin
-  password: changeme
+  username: ""
+  password: ""
 ```
 
-Leave `username` blank to disable auth (default for local-only use).
+Leave `username` blank to disable auth (default for local-only use). Set both username and password to enable login.
 
 ## TUI keybindings
 

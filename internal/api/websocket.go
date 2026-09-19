@@ -9,13 +9,15 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gorilla/websocket"
 	"github.com/jdbnet/dockyard/internal/docker"
 	"github.com/jdbnet/dockyard/ui"
-	"github.com/gorilla/websocket"
 )
 
 var upgrader = websocket.Upgrader{
-	CheckOrigin: func(r *http.Request) bool { return true },
+	CheckOrigin: func(r *http.Request) bool {
+		return originAllowed(r.Header.Get("Origin"), r.Host)
+	},
 }
 
 func (s *Server) handleWSEvents(w http.ResponseWriter, r *http.Request) {

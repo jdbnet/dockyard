@@ -1,6 +1,6 @@
 <script setup>
 import { ref, onMounted, onUnmounted, computed, nextTick, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import uPlot from 'uplot'
 import 'uplot/dist/uPlot.min.css'
 import { getContainer, containerAction, removeContainer, updateContainer, removeImage, wsURL } from '@/api/client'
@@ -11,6 +11,7 @@ import { errorMessage } from '@/lib/errors'
 import TerminalPanel from '@/components/TerminalPanel.vue'
 
 const route = useRoute()
+const router = useRouter()
 const store = useEngineStore()
 const ui = useUiStore()
 const loading = ref(true)
@@ -213,6 +214,13 @@ onUnmounted(() => {
         <p class="text-sm text-muted">{{ container.image }}</p>
       </div>
       <div class="flex gap-2">
+        <button
+          v-if="container.compose_project"
+          class="btn-ghost"
+          @click="router.push(`/stacks/${encodeURIComponent(container.compose_project)}`)"
+        >
+          Stack
+        </button>
         <button class="btn-primary" :disabled="busy" @click="act('start')">Start</button>
         <button class="btn-ghost" :disabled="busy" @click="act('stop')">Stop</button>
         <button class="btn-ghost" :disabled="busy" @click="act('restart')">Restart</button>
@@ -246,7 +254,17 @@ onUnmounted(() => {
       <div><span class="text-muted">State:</span> {{ updating ? 'updating…' : container.state }}</div>
       <div><span class="text-muted">Health:</span> {{ container.health || '-' }}</div>
       <div><span class="text-muted">Uptime:</span> {{ container.uptime || '-' }}</div>
-      <div><span class="text-muted">Stack:</span> {{ container.compose_project || '-' }}</div>
+      <div>
+        <span class="text-muted">Stack:</span>
+        <button
+          v-if="container.compose_project"
+          class="ml-1 text-accent hover:underline"
+          @click="router.push(`/stacks/${encodeURIComponent(container.compose_project)}`)"
+        >
+          {{ container.compose_project }}
+        </button>
+        <span v-else> -</span>
+      </div>
       <div><span class="text-muted">Service:</span> {{ container.compose_service || '-' }}</div>
       <div><span class="text-muted">Restarts:</span> {{ container.restart_count }}</div>
     </div>
