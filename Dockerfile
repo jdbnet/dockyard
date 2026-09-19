@@ -17,7 +17,7 @@ ARG VERSION=dev
 RUN CGO_ENABLED=0 go build -ldflags="-s -w -X github.com/jdbnet/dockyard/internal/version.Version=${VERSION}" -o dockyard ./cmd/dockyard
 
 # ── Stage 3: Runtime ──
-FROM alpine:3.20
+FROM alpine:3.24
 RUN apk add --no-cache ca-certificates tzdata wget
 WORKDIR /app
 COPY --from=server /build/dockyard .
