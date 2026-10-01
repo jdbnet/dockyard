@@ -13,7 +13,11 @@ import (
 
 // PullImage pulls the given image reference.
 func (c *Client) PullImage(ctx context.Context, ref string) error {
-	rc, err := c.cli.ImagePull(ctx, ref, image.PullOptions{})
+	auth, err := encodedRegistryAuth(ref)
+	if err != nil {
+		return err
+	}
+	rc, err := c.cli.ImagePull(ctx, ref, image.PullOptions{RegistryAuth: auth})
 	if err != nil {
 		return err
 	}

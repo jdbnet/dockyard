@@ -268,7 +268,11 @@ func (c *Client) ImageRepoDigests(ctx context.Context, imageID string) ([]string
 }
 
 func (c *Client) RemoteImageDigest(ctx context.Context, ref string) (string, error) {
-	dist, err := c.cli.DistributionInspect(ctx, ref, "")
+	auth, err := encodedRegistryAuth(ref)
+	if err != nil {
+		return "", err
+	}
+	dist, err := c.cli.DistributionInspect(ctx, ref, auth)
 	if err != nil {
 		return "", err
 	}
