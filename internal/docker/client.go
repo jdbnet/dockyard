@@ -32,6 +32,7 @@ type ContainerSummary struct {
 	ShortID        string
 	Name           string
 	Image          string
+	ImageID        string
 	State          string
 	Status         string
 	ComposeProject string
@@ -45,12 +46,12 @@ type ContainerSummary struct {
 }
 
 type ImageSummary struct {
-	ID        string
-	ShortID   string
-	RepoTags  []string
-	Size      int64
-	Created   time.Time
-	Unused    bool
+	ID         string
+	ShortID    string
+	RepoTags   []string
+	Size       int64
+	Created    time.Time
+	Unused     bool
 	Containers int
 }
 
@@ -164,6 +165,7 @@ func mapContainer(ctr container.Summary) ContainerSummary {
 		ShortID:        shortID,
 		Name:           name,
 		Image:          ctr.Image,
+		ImageID:        ctr.ImageID,
 		State:          ctr.State,
 		Status:         ctr.Status,
 		ComposeProject: ctr.Labels[LabelComposeProject],
@@ -255,6 +257,22 @@ func (c *Client) ListImages(ctx context.Context) ([]ImageSummary, error) {
 		})
 	}
 	return out, nil
+}
+
+func (c *Client) ImageRepoDigests(ctx context.Context, imageID string) ([]string, error) {
+	insp, err := c.cli.ImageInspect(ctx, imageID)
+	if err != nil {
+		return nil, err
+	}
+	return insp.RepoDigests, nil
+}
+
+func (c *Client) RemoteImageDigest(ctx context.Context, ref string) (string, error) {
+	dist, err := c.cli.DistributionInspect(ctx, ref, "")
+	if err != nil {
+		return "", err
+	}
+	return dist.Descriptor.Digest.String(), nil
 }
 
 func (c *Client) PruneUnusedImages(ctx context.Context) (PruneImagesReport, error) {

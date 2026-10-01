@@ -3,6 +3,7 @@ package engine
 import (
 	"context"
 	"fmt"
+	"log"
 	"os"
 	"sort"
 	"strings"
@@ -277,6 +278,9 @@ func (e *Engine) finishContainerUpdate(ctx context.Context, previousImageID stri
 	result := UpdateContainerResult{}
 	if img := e.removableImage(ctx, previousImageID); img != nil {
 		result.PreviousImage = img
+	}
+	if err := e.scanUpdates(ctx); err != nil {
+		log.Printf("updates scan: %v", err)
 	}
 	return result, nil
 }

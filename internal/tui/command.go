@@ -18,6 +18,7 @@ var navigatorCommands = []commandDef{
 	{name: "volumes", view: viewVolumes, aliases: []string{"v"}},
 	{name: "networks", view: viewNetworks, aliases: []string{"n"}},
 	{name: "ports", view: viewPorts, aliases: []string{"p"}},
+	{name: "updates", view: viewUpdates, aliases: []string{"u"}},
 	{name: "quit", quit: true, aliases: []string{"q"}},
 }
 

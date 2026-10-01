@@ -82,6 +82,22 @@ type UpdateContainerResult struct {
 	PreviousImage *PreviousImage `json:"previous_image,omitempty"`
 }
 
+type ImageUpdate struct {
+	ContainerID  string `json:"container_id"`
+	ShortID      string `json:"short_id"`
+	Name         string `json:"name"`
+	Image        string `json:"image"`
+	LocalDigest  string `json:"local_digest"`
+	RemoteDigest string `json:"remote_digest"`
+	Error        string `json:"error,omitempty"`
+}
+
+type UpdatesReport struct {
+	ScannedAt time.Time     `json:"scanned_at"`
+	Pending   []ImageUpdate `json:"pending"`
+	Failures  []ImageUpdate `json:"failures"`
+}
+
 type Event struct {
 	Type      string    `json:"type"`
 	Action    string    `json:"action"`

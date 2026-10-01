@@ -23,6 +23,13 @@ func TestResolveNavigatorCommandPartial(t *testing.T) {
 	}
 }
 
+func TestResolveNavigatorCommandUpdates(t *testing.T) {
+	def, ok := resolveNavigatorCommand("updates")
+	if !ok || def.name != "updates" || def.view != viewUpdates {
+		t.Fatalf("expected updates view, got ok=%v def=%+v", ok, def)
+	}
+}
+
 func TestResolveNavigatorCommandAlias(t *testing.T) {
 	def, ok := resolveNavigatorCommand("i")
 	if !ok || def.name != "images" {

@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 )
 
 func TestLoadConfigDefaults(t *testing.T) {
@@ -20,6 +21,9 @@ func TestLoadConfigDefaults(t *testing.T) {
 	if cfg.Compose.StacksDir != "/opt/stacks" {
 		t.Fatalf("unexpected stacks dir: %s", cfg.Compose.StacksDir)
 	}
+	if cfg.Updates.Interval.Duration != time.Hour {
+		t.Fatalf("unexpected updates interval: %s", cfg.Updates.Interval.Duration)
+	}
 }
 
 func TestEnvOverride(t *testing.T) {
@@ -32,6 +36,17 @@ func TestEnvOverride(t *testing.T) {
 		t.Fatalf("expected port 9000, got %d", cfg.Web.Port)
 	}
 	os.Unsetenv("DOCKYARD_WEB_PORT")
+}
+
+func TestUpdatesIntervalEnv(t *testing.T) {
+	t.Setenv("DOCKYARD_UPDATES_INTERVAL", "15m")
+	cfg, err := LoadConfig(filepath.Join(t.TempDir(), "missing.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Updates.Interval.Duration != 15*time.Minute {
+		t.Fatalf("expected 15m, got %s", cfg.Updates.Interval.Duration)
+	}
 }
 
 func TestWebBindIsLoopback(t *testing.T) {

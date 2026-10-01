@@ -86,6 +86,8 @@ func viewTitle(m model) string {
 		return "networks"
 	case viewPorts:
 		return "ports"
+	case viewUpdates:
+		return "updates"
 	case viewLogs:
 		return "logs"
 	case viewInspect:
@@ -141,7 +143,11 @@ func (m model) renderTablePanel(outerH int) string {
 
 	if len(rows) == 0 {
 		if innerH >= 3 {
-			lines = append(lines, styleMuted.Render(strings.Repeat(" ", rowMarkerWidth)+"(empty)"))
+			empty := "(empty)"
+			if m.view == viewUpdates {
+				empty = "No pending updates available."
+			}
+			lines = append(lines, styleMuted.Render(strings.Repeat(" ", rowMarkerWidth)+empty))
 		}
 		for len(lines) < innerH {
 			lines = append(lines, "")
@@ -163,7 +169,7 @@ func (m model) renderTablePanel(outerH int) string {
 		if i < start {
 			continue
 		}
-		cols := containerRowCols(r, m.view == viewContainers && m.updating[r.id], m.spinnerTick)
+		cols := containerRowCols(r, (m.view == viewContainers || m.view == viewUpdates) && m.updating[r.id], m.spinnerTick)
 		line := formatStyledTableRow(m.view, specs, cols, widths, r)
 		if i == m.cursor {
 			line = styleSelected.Render("> ") + line
@@ -251,6 +257,8 @@ func statusBar(m model) string {
 		return "x remove  P prune unused  j/k nav  R refresh  :cmd  /filter  ? help  q quit"
 	case viewPorts:
 		return "d inspect  j/k nav  R refresh  :cmd  /filter  ? help  q quit"
+	case viewUpdates:
+		return "u update  R scan  j/k nav  :cmd  /filter  ? help  q quit"
 	}
 	return ":cmd  /filter  j/k  d inspect  e shell  l logs  u update  s/S/r  x remove  c stacks  p ports  R refresh  ? help  q quit"
 }
@@ -273,7 +281,7 @@ func (m model) renderHeader(w int, title string) string {
 func helpText() string {
 	return `Dockyard TUI - keybindings
 
-  :containers :stacks :images :volumes :networks :ports  Jump to view
+  :containers :stacks :updates :images :volumes :networks :ports  Jump to view
   :exec cmd    Run command in selected container
   /           Filter current view
   tab         Autocomplete : command
@@ -304,7 +312,7 @@ func (m model) renderCommandInput(w int) string {
 	if suffix == "" {
 		_, suffix = commandSuggestion(input)
 	}
-	line := styleAccent.Render(":" + input + "█") + styleMuted.Render(suffix)
+	line := styleAccent.Render(":"+input+"█") + styleMuted.Render(suffix)
 	return lipgloss.NewStyle().Width(w).Padding(0, 1).Render(line)
 }
 

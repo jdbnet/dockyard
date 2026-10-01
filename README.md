@@ -91,7 +91,7 @@ Leave `username` blank to disable auth (default for local-only use). Set both us
 
 | Key | Action |
 |-----|--------|
-| `:` | Command bar (`:containers`, `:compose`, `:images`, `:volumes`, `:networks`) |
+| `:` | Command bar (`:containers`, `:compose`, `:updates`, `:images`, `:volumes`, `:networks`) |
 | `/` | Filter |
 | `j`/`k` | Navigate |
 | `d` | Inspect |

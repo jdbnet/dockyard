@@ -95,6 +95,8 @@ func (s *Server) registerRoutes() {
 	s.mux.HandleFunc("GET /api/v1/networks", s.handleListNetworks)
 	s.mux.HandleFunc("GET /api/v1/ports", s.handleListPorts)
 	s.mux.HandleFunc("DELETE /api/v1/networks/{id}", s.handleRemoveNetwork)
+	s.mux.HandleFunc("GET /api/v1/updates", s.handleListUpdates)
+	s.mux.HandleFunc("POST /api/v1/updates/scan", s.handleScanUpdates)
 
 	s.mux.HandleFunc("GET /ws/events", s.handleWSEvents)
 	s.mux.HandleFunc("GET /ws/stats", s.handleWSStats)
@@ -189,6 +191,18 @@ func (s *Server) handleRemoveNetwork(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+func (s *Server) handleListUpdates(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, http.StatusOK, s.eng.Updates())
+}
+
+func (s *Server) handleScanUpdates(w http.ResponseWriter, r *http.Request) {
+	if err := s.eng.ScanUpdates(r.Context()); err != nil {
+		actionError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, s.eng.Updates())
 }
 
 func formatAddr(cfg *config.Config) string {

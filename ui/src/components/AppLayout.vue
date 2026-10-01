@@ -2,13 +2,13 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import {
-  Menu, X, LayoutDashboard, Layers, Image, HardDrive, Network, Plug, LogOut, Sun, Moon,
+  Menu, X, LayoutDashboard, Layers, RefreshCw, Image, HardDrive, Network, Plug, LogOut, Sun, Moon,
 } from '@lucide/vue'
 import { useEngineStore } from '@/stores/engine'
 import { useAuthStore } from '@/stores/auth'
 import { useThemeStore } from '@/stores/theme'
 import { useUiStore } from '@/stores/ui'
-import { getHealth } from '@/api/client'
+import { getHealth, getUpdates } from '@/api/client'
 
 const route = useRoute()
 const store = useEngineStore()
@@ -17,6 +17,7 @@ const theme = useThemeStore()
 const ui = useUiStore()
 const sidebarOpen = ref(false)
 const appVersion = ref('')
+const pendingUpdates = ref(0)
 
 onMounted(async () => {
   try {
@@ -27,11 +28,26 @@ onMounted(async () => {
   } catch {
     // health unavailable when web UI is offline
   }
+  await loadUpdateCount()
 })
+
+watch(() => store.lastEvent, (ev) => {
+  if (ev?.type === 'updates') loadUpdateCount()
+})
+
+async function loadUpdateCount() {
+  try {
+    const data = await getUpdates()
+    pendingUpdates.value = data.pending?.length ?? 0
+  } catch {
+    // keep the last count when the request fails
+  }
+}
 
 const nav = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard, match: (p) => p === '/' || p.startsWith('/containers/') },
   { to: '/stacks', label: 'Stacks', icon: Layers, match: (p) => p.startsWith('/stacks') },
+  { to: '/updates', label: 'Updates', icon: RefreshCw, match: (p) => p.startsWith('/updates') },
   { to: '/images', label: 'Images', icon: Image, match: (p) => p.startsWith('/images') },
   { to: '/volumes', label: 'Volumes', icon: HardDrive, match: (p) => p.startsWith('/volumes') },
   { to: '/networks', label: 'Networks', icon: Network, match: (p) => p.startsWith('/networks') },
@@ -86,7 +102,13 @@ async function logout() {
           @click="sidebarOpen = false"
         >
           <component :is="item.icon" class="h-4 w-4 shrink-0" />
-          {{ item.label }}
+          <span class="min-w-0 flex-1 truncate">{{ item.label }}</span>
+          <span
+            v-if="item.to === '/updates' && pendingUpdates > 0"
+            class="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1.5 text-[11px] font-semibold leading-none text-neutral-950"
+          >
+            {{ pendingUpdates }}
+          </span>
         </RouterLink>
       </nav>
 

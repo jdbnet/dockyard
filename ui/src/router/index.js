@@ -8,6 +8,7 @@ import Images from '@/views/Images.vue'
 import Volumes from '@/views/Volumes.vue'
 import Networks from '@/views/Networks.vue'
 import Ports from '@/views/Ports.vue'
+import Updates from '@/views/Updates.vue'
 import Login from '@/views/Login.vue'
 
 const router = createRouter({
@@ -18,6 +19,7 @@ const router = createRouter({
     { path: '/containers/:id', name: 'container', component: ContainerDetail },
     { path: '/stacks', name: 'stacks', component: Stacks },
     { path: '/stacks/:name', name: 'stack', component: StackDetail },
+    { path: '/updates', name: 'updates', component: Updates },
     { path: '/images', name: 'images', component: Images },
     { path: '/volumes', name: 'volumes', component: Volumes },
     { path: '/networks', name: 'networks', component: Networks },

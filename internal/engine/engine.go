@@ -26,6 +26,8 @@ type Engine struct {
 	subMu    sync.RWMutex
 	subs     map[chan Event]struct{}
 	cancel   context.CancelFunc
+	scanMu   sync.Mutex
+	updates  UpdatesReport
 }
 
 type dockerStatsJSON struct {
@@ -78,6 +80,7 @@ func (e *Engine) Run(ctx context.Context) error {
 	go e.watchEventsLoop(ctx)
 	go e.pollStats(ctx)
 	go e.fallbackRefresh(ctx)
+	go e.pollUpdates(ctx)
 
 	if err := e.refreshAll(ctx); err != nil {
 		return err

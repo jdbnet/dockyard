@@ -67,6 +67,15 @@ func portCols() []colSpec {
 	}
 }
 
+func updateCols() []colSpec {
+	return []colSpec{
+		{header: "CONTAINER", min: 12, max: 0},
+		{header: "IMAGE", min: 16, max: 0},
+		{header: "CURRENT", min: 12, max: 12},
+		{header: "AVAILABLE", min: 12, max: 0},
+	}
+}
+
 func colsForView(v viewKind) []colSpec {
 	switch v {
 	case viewStacks:
@@ -79,6 +88,8 @@ func colsForView(v viewKind) []colSpec {
 		return networkCols()
 	case viewPorts:
 		return portCols()
+	case viewUpdates:
+		return updateCols()
 	default:
 		return containerCols()
 	}

@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/jdbnet/dockyard/internal/config"
-	"github.com/jdbnet/dockyard/internal/engine"
 	"github.com/charmbracelet/bubbles/textarea"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/jdbnet/dockyard/internal/config"
+	"github.com/jdbnet/dockyard/internal/engine"
 )
 
 func Run(ctx context.Context, eng *engine.Engine, cfg *config.Config, version string) error {
@@ -32,31 +32,32 @@ const (
 	viewVolumes
 	viewNetworks
 	viewPorts
+	viewUpdates
 	viewLogs
 	viewInspect
 	viewHelp
 )
 
 type model struct {
-	eng          *engine.Engine
-	cfg          *config.Config
-	version      string
-	view         viewKind
-	rows         []rowItem
-	cursor       int
-	filter       string
-	filterActive bool
-	commandMode  bool
-	commandInput string
-	confirm      *confirmDialog
-	statusMsg    string
-	errMsg       string
-	width        int
-	height       int
-	events       <-chan engine.Event
-	logLines     []string
-	logViewport  int
-	logHOffset   int
+	eng             *engine.Engine
+	cfg             *config.Config
+	version         string
+	view            viewKind
+	rows            []rowItem
+	cursor          int
+	filter          string
+	filterActive    bool
+	commandMode     bool
+	commandInput    string
+	confirm         *confirmDialog
+	statusMsg       string
+	errMsg          string
+	width           int
+	height          int
+	events          <-chan engine.Event
+	logLines        []string
+	logViewport     int
+	logHOffset      int
 	logContainerID  string
 	logFollowCh     <-chan logFollowMsg
 	logFollowCancel context.CancelFunc
@@ -64,15 +65,15 @@ type model struct {
 	logShowTS       bool
 	updating        map[string]bool
 	spinnerTick     int
-	inspectText  string
-	helpOpen     bool
+	inspectText     string
+	helpOpen        bool
 
-	editMode  editMode
-	stackName      string
-	stackNew       bool
-	stackEditable  bool
-	nameInput textinput.Model
-	composeTA textarea.Model
+	editMode      editMode
+	stackName     string
+	stackNew      bool
+	stackEditable bool
+	nameInput     textinput.Model
+	composeTA     textarea.Model
 }
 
 type rowItem struct {
@@ -90,11 +91,11 @@ type confirmDialog struct {
 
 func newModel(eng *engine.Engine, cfg *config.Config, version string) model {
 	m := model{
-		eng:     eng,
-		cfg:     cfg,
-		version: version,
-		view:    viewContainers,
-		events:  eng.Subscribe(),
+		eng:      eng,
+		cfg:      cfg,
+		version:  version,
+		view:     viewContainers,
+		events:   eng.Subscribe(),
 		updating: make(map[string]bool),
 	}
 	m.nameInput = m.initNameInput()
@@ -159,6 +160,8 @@ func refreshRowsCmd(eng *engine.Engine, view viewKind) tea.Cmd {
 				return errLineMsg(err)
 			}
 			return rowsMsg(buildPortRows(list))
+		case viewUpdates:
+			return rowsMsg(buildUpdateRows(eng.Updates()))
 		}
 		return nil
 	}
@@ -243,6 +246,42 @@ func buildNetworkRows(list []engine.Network) []rowItem {
 		})
 	}
 	return rows
+}
+
+func buildUpdateRows(report engine.UpdatesReport) []rowItem {
+	rows := make([]rowItem, 0, len(report.Pending)+len(report.Failures))
+	for _, item := range report.Pending {
+		rows = append(rows, rowItem{
+			id: item.ContainerID,
+			cols: []string{
+				item.Name,
+				item.Image,
+				shortDigest(item.LocalDigest),
+				shortDigest(item.RemoteDigest),
+			},
+		})
+	}
+	for _, item := range report.Failures {
+		errText := item.Error
+		if errText == "" {
+			errText = "check failed"
+		}
+		rows = append(rows, rowItem{
+			cols: []string{item.Name, item.Image, "error", errText},
+		})
+	}
+	return rows
+}
+
+func shortDigest(value string) string {
+	if value == "" {
+		return "-"
+	}
+	value = strings.TrimPrefix(value, "sha256:")
+	if len(value) > 12 {
+		return value[:12]
+	}
+	return value
 }
 
 func buildPortRows(list []engine.PortBinding) []rowItem {

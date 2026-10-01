@@ -21,6 +21,7 @@ type Config struct {
 	Events      EventsConfig      `yaml:"events"`
 	RestartLoop RestartLoopConfig `yaml:"restart_loop"`
 	TUI         TUIConfig         `yaml:"tui"`
+	Updates     UpdatesConfig     `yaml:"updates"`
 }
 
 type DockerConfig struct {
@@ -60,6 +61,10 @@ type TUIConfig struct {
 	RefreshRate Duration `yaml:"refresh_rate"`
 }
 
+type UpdatesConfig struct {
+	Interval Duration `yaml:"interval"`
+}
+
 // Duration wraps time.Duration for YAML unmarshaling.
 type Duration struct {
 	time.Duration
@@ -94,6 +99,9 @@ func LoadConfig(path string) (*Config, error) {
 	}
 
 	applyEnvOverrides(cfg)
+	if cfg.Updates.Interval.Duration <= 0 {
+		cfg.Updates.Interval.Duration = time.Hour
+	}
 	return cfg, nil
 }
 
@@ -117,6 +125,9 @@ func defaultConfig() *Config {
 		},
 		TUI: TUIConfig{
 			RefreshRate: Duration{100 * time.Millisecond},
+		},
+		Updates: UpdatesConfig{
+			Interval: Duration{time.Hour},
 		},
 	}
 }
@@ -144,6 +155,11 @@ func applyEnvOverrides(cfg *Config) {
 	}
 	if v := os.Getenv("DOCKYARD_AUTH_PASS"); v != "" {
 		cfg.Auth.Password = v
+	}
+	if v := os.Getenv("DOCKYARD_UPDATES_INTERVAL"); v != "" {
+		if d, err := time.ParseDuration(v); err == nil && d > 0 {
+			cfg.Updates.Interval.Duration = d
+		}
 	}
 }
 

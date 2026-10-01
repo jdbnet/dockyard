@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/jdbnet/dockyard/internal/engine"
 	"github.com/charmbracelet/bubbles/textarea"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/jdbnet/dockyard/internal/engine"
 )
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -61,6 +61,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.updateStacks(msg)
 		case viewImages:
 			return m.updateImages(msg)
+		case viewUpdates:
+			return m.updateUpdates(msg)
 		}
 
 		return m.updateContainers(msg)
@@ -80,6 +82,15 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.cursor = max(0, len(m.filteredRows())-1)
 		}
 		return m, nil
+
+	case scanUpdatesDoneMsg:
+		if msg.err != nil {
+			m.errMsg = msg.err.Error()
+			return m, nil
+		}
+		m.statusMsg = "scanned"
+		m.errMsg = ""
+		return m, refreshRowsCmd(m.eng, viewUpdates)
 
 	case statusLineMsg:
 		m.statusMsg = string(msg)
@@ -312,6 +323,42 @@ func (m model) updateContainers(msg tea.KeyMsg) (model, tea.Cmd) {
 		return m, m.cmdAction("restart", m.eng.Restart)
 	case "x":
 		return m.cmdRemove()
+	}
+	return m, nil
+}
+
+type scanUpdatesDoneMsg struct {
+	err error
+}
+
+func (m model) updateUpdates(msg tea.KeyMsg) (model, tea.Cmd) {
+	switch msg.String() {
+	case "ctrl+c", "q":
+		return m, tea.Quit
+	case ":", "/":
+		return m.handleCommonKeys(msg)
+	case "?", "h":
+		m.helpOpen = true
+	case "j", "down":
+		if m.cursor < len(m.filteredRows())-1 {
+			m.cursor++
+		}
+	case "k", "up":
+		if m.cursor > 0 {
+			m.cursor--
+		}
+	case "R":
+		return m, func() tea.Msg {
+			err := m.eng.ScanUpdates(context.Background())
+			return scanUpdatesDoneMsg{err: err}
+		}
+	case "u":
+		sel := m.selected()
+		if sel == nil || sel.id == "" {
+			m.statusMsg = "nothing to update"
+			return m, nil
+		}
+		return m.startContainerUpdate(sel.id)
 	}
 	return m, nil
 }

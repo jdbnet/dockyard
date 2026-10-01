@@ -106,6 +106,16 @@ export async function getPorts() {
   return data
 }
 
+export async function getUpdates() {
+  const { data } = await api.get('/updates')
+  return data
+}
+
+export async function scanUpdates() {
+  const { data } = await api.post('/updates/scan')
+  return data
+}
+
 export async function removeImage(id) {
   await api.delete(`/images/${id}`)
 }

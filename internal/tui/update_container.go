@@ -6,8 +6,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jdbnet/dockyard/internal/engine"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/jdbnet/dockyard/internal/engine"
 )
 
 type updateDoneMsg struct {
@@ -99,7 +99,7 @@ func containerRowCols(row rowItem, updating bool, spinnerTick int) []string {
 		return row.cols
 	}
 	cols := append([]string(nil), row.cols...)
-	if len(cols) > 2 {
+	if len(cols) > 2 && cols[2] != "error" {
 		cols[2] = updatingStateLabel(spinnerTick)
 	}
 	return cols

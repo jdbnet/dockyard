@@ -19,3 +19,5 @@ tui:
   refresh_rate: 100ms
 compose:
   stacks_dir: /opt/stacks
+updates:
+  interval: 1h
