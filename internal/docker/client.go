@@ -274,7 +274,7 @@ func (c *Client) RemoteImageDigest(ctx context.Context, ref string) (string, err
 	}
 	dist, err := c.cli.DistributionInspect(ctx, ref, auth)
 	if err != nil {
-		return "", err
+		return "", annotateRegistryAuth(ref, auth, err)
 	}
 	return dist.Descriptor.Digest.String(), nil
 }

@@ -19,7 +19,7 @@ func (c *Client) PullImage(ctx context.Context, ref string) error {
 	}
 	rc, err := c.cli.ImagePull(ctx, ref, image.PullOptions{RegistryAuth: auth})
 	if err != nil {
-		return err
+		return annotateRegistryAuth(ref, auth, err)
 	}
 	defer rc.Close()
 	_, _ = io.Copy(io.Discard, rc)

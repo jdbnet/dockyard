@@ -3,12 +3,42 @@ package docker
 import (
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/docker/docker/api/types/registry"
 )
+
+func TestDockerHomeDirWithoutHOME(t *testing.T) {
+	t.Setenv("HOME", "")
+	t.Setenv("DOCKER_CONFIG", "")
+	home := dockerHomeDir()
+	if home == "" || home == "/" {
+		t.Fatalf("home %q", home)
+	}
+	if !strings.HasSuffix(dockerConfigPath(), filepath.Join(".docker", "config.json")) {
+		t.Fatal(dockerConfigPath())
+	}
+}
+
+func TestAnnotateRegistryAuthMissingLogin(t *testing.T) {
+	err := annotateRegistryAuth("ghcr.io/jdbnet/register:latest", "", os.ErrPermission)
+	if err != os.ErrPermission {
+		t.Fatalf("non-unauthorized error changed: %v", err)
+	}
+	denied := errors.New("unauthorized")
+	wrapped := annotateRegistryAuth("ghcr.io/jdbnet/register:latest", "", denied)
+	if wrapped == nil || !strings.Contains(wrapped.Error(), "no Docker credentials for ghcr.io") {
+		t.Fatal(wrapped)
+	}
+	kept := annotateRegistryAuth("ghcr.io/jdbnet/register:latest", "abc", denied)
+	if kept.Error() != "unauthorized" {
+		t.Fatal(kept)
+	}
+}
 
 func TestAuthForImageFromConfig(t *testing.T) {
 	dir := t.TempDir()

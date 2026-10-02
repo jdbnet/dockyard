@@ -5,6 +5,7 @@ Wants=docker.service network-online.target
 
 [Service]
 Type=simple
+SetLoginEnvironment=yes
 ExecStart=/usr/local/bin/dockyard --headless --web /etc/dockyard/config.yaml
 Restart=on-failure
 RestartSec=5

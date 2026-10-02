@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"os/user"
 	"path/filepath"
 	"strings"
 
@@ -60,15 +61,50 @@ func encodedRegistryAuth(imageRef string) (string, error) {
 	return registry.EncodeAuthConfig(auth)
 }
 
+// annotateRegistryAuth explains an anonymous registry rejection. Docker keeps
+// logins in the client config, not in the daemon, so a Dockyard process that
+// cannot read that file gets the same unauthorized response as a logged-out CLI.
+func annotateRegistryAuth(ref, encoded string, err error) error {
+	if err == nil || encoded != "" || !strings.Contains(strings.ToLower(err.Error()), "unauthorized") {
+		return err
+	}
+	host := registryHost(ref)
+	if host == "" {
+		host = ref
+	}
+	path := dockerConfigPath()
+	if path == "" {
+		return fmt.Errorf("no Docker credentials for %s: %w", host, err)
+	}
+	return fmt.Errorf("no Docker credentials for %s in %s: %w", host, path, err)
+}
+
 func dockerConfigPath() string {
 	if dir := strings.TrimSpace(os.Getenv("DOCKER_CONFIG")); dir != "" {
 		return filepath.Join(dir, "config.json")
 	}
-	home, err := os.UserHomeDir()
-	if err != nil || home == "" {
+	home := dockerHomeDir()
+	if home == "" {
 		return ""
 	}
 	return filepath.Join(home, ".docker", "config.json")
+}
+
+// dockerHomeDir is the home directory whose .docker/config.json should be read.
+// systemd system units do not set HOME unless User= or SetLoginEnvironment= is
+// set, and os.UserHomeDir only consults HOME. Fall back to the passwd entry so
+// a root service still finds /root/.docker/config.json.
+func dockerHomeDir() string {
+	if home, err := os.UserHomeDir(); err == nil && home != "" && home != "/" {
+		return home
+	}
+	if u, err := user.Current(); err == nil && u.HomeDir != "" && u.HomeDir != "/" {
+		return u.HomeDir
+	}
+	if os.Geteuid() == 0 {
+		return "/root"
+	}
+	return ""
 }
 
 func (cfg dockerConfigFile) authForImage(imageRef string) (registry.AuthConfig, bool, error) {
