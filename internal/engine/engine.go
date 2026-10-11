@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -13,6 +14,7 @@ import (
 	"github.com/jdbnet/dockyard/internal/compose"
 	"github.com/jdbnet/dockyard/internal/config"
 	"github.com/jdbnet/dockyard/internal/docker"
+	"github.com/jdbnet/dockyard/internal/logging"
 )
 
 type Engine struct {
@@ -28,6 +30,7 @@ type Engine struct {
 	cancel   context.CancelFunc
 	scanMu   sync.Mutex
 	updates  UpdatesReport
+	shipper  *logging.Shipper
 }
 
 type dockerStatsJSON struct {
@@ -63,6 +66,19 @@ func New(cfg *config.Config, dc *docker.Client) (*Engine, error) {
 	if err != nil {
 		return nil, fmt.Errorf("external stacks registry: %w", err)
 	}
+	logDir := "logging"
+	if cfg.Path != "" {
+		logDir = filepath.Join(filepath.Dir(cfg.Path), "logging")
+	}
+	shipper, err := logging.New(logging.Options{
+		Dir:      logDir,
+		Settings: cfg.Logging,
+		Source:   logging.NewDockerSource(dc),
+		SelfIDs:  logging.OwnContainerIDs(),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("log shipping: %w", err)
+	}
 	return &Engine{
 		cfg:      cfg,
 		docker:   dc,
@@ -72,6 +88,7 @@ func New(cfg *config.Config, dc *docker.Client) (*Engine, error) {
 		stats:    newStatsCache(),
 		tracker:  newRestartTracker(cfg.RestartLoop.Threshold, cfg.RestartLoop.Window.Duration),
 		subs:     make(map[chan Event]struct{}),
+		shipper:  shipper,
 	}, nil
 }
 
@@ -81,12 +98,39 @@ func (e *Engine) Run(ctx context.Context) error {
 	go e.pollStats(ctx)
 	go e.fallbackRefresh(ctx)
 	go e.pollUpdates(ctx)
+	if e.shipper != nil {
+		kicks := make(chan struct{}, 1)
+		go e.forwardLogKicks(ctx, kicks)
+		go e.shipper.Run(ctx, kicks)
+	}
 
 	if err := e.refreshAll(ctx); err != nil {
 		return err
 	}
 	<-ctx.Done()
 	return ctx.Err()
+}
+
+func (e *Engine) forwardLogKicks(ctx context.Context, kicks chan<- struct{}) {
+	ch := e.Subscribe()
+	defer e.Unsubscribe(ch)
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case ev, ok := <-ch:
+			if !ok {
+				return
+			}
+			if ev.Type != "container" && ev.Type != "containers" {
+				continue
+			}
+			select {
+			case kicks <- struct{}{}:
+			default:
+			}
+		}
+	}
 }
 
 func (e *Engine) Shutdown() {

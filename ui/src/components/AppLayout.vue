@@ -2,7 +2,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import {
-  Menu, X, LayoutDashboard, Layers, RefreshCw, Image, HardDrive, Network, Plug, LogOut, Sun, Moon,
+  Menu, X, LayoutDashboard, Layers, RefreshCw, Image, HardDrive, Network, Plug, Settings, LogOut, Sun, Moon,
 } from '@lucide/vue'
 import { useEngineStore } from '@/stores/engine'
 import { useAuthStore } from '@/stores/auth'
@@ -52,6 +52,7 @@ const nav = [
   { to: '/volumes', label: 'Volumes', icon: HardDrive, match: (p) => p.startsWith('/volumes') },
   { to: '/networks', label: 'Networks', icon: Network, match: (p) => p.startsWith('/networks') },
   { to: '/ports', label: 'Ports', icon: Plug, match: (p) => p.startsWith('/ports') },
+  { to: '/settings', label: 'Settings', icon: Settings, match: (p) => p.startsWith('/settings') },
 ]
 
 const pageTitle = computed(() => {

@@ -106,6 +106,36 @@ export async function getPorts() {
   return data
 }
 
+export async function getSettings() {
+  const { data } = await api.get('/settings')
+  return data
+}
+
+export async function saveSettings(body) {
+  const { data } = await api.put('/settings', body)
+  return data
+}
+
+export async function getLoggingSettings() {
+  const { data } = await api.get('/settings/logging')
+  return data
+}
+
+export async function saveLoggingSettings(body) {
+  const { data } = await api.put('/settings/logging', body)
+  return data
+}
+
+export async function testLoggingSettings(body) {
+  const { data } = await api.post('/settings/logging/test', body)
+  return data
+}
+
+export async function getLoggingStatus() {
+  const { data } = await api.get('/settings/logging/status')
+  return data
+}
+
 export async function getUpdates() {
   const { data } = await api.get('/updates')
   return data

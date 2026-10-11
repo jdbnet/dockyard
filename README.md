@@ -15,6 +15,7 @@
 - **Live stats** - background poller with ring-buffer cache for sparklines and graphs
 - **Event stream** - Docker events for real-time state changes
 - **Restart-loop detection** - flags containers restarting repeatedly
+- **Log shipping** - follows container stdout and stderr and pushes them to GoLogs or Loki
 
 Replaces Portainer/Dockge for homelab use - talks directly to `/var/run/docker.sock` via the official Docker SDK.
 
@@ -73,7 +74,9 @@ restart_loop:
   window: 5m
 ```
 
-Environment overrides: `DOCKYARD_DOCKER_SOCKET`, `DOCKYARD_WEB_PORT`, `DOCKYARD_WEB_BIND`, `DOCKYARD_WEB_ENABLED`, `DOCKYARD_AUTH_USER`, `DOCKYARD_AUTH_PASS`.
+The same values can be edited under Settings in the web UI. Saving writes them back to `config.yaml`. Login changes apply immediately. The Docker socket, web address, stacks directory, and intervals apply after a restart.
+
+Environment overrides: `DOCKYARD_DOCKER_SOCKET`, `DOCKYARD_WEB_PORT`, `DOCKYARD_WEB_BIND`, `DOCKYARD_WEB_ENABLED`, `DOCKYARD_AUTH_USER`, `DOCKYARD_AUTH_PASS`, `DOCKYARD_STACKS_DIR`, `DOCKYARD_UPDATES_INTERVAL`. These win over the file when Dockyard starts.
 
 ### Web authentication
 
@@ -86,6 +89,36 @@ auth:
 ```
 
 Leave `username` blank to disable auth (default for local-only use). Set both username and password to enable login.
+
+### Logging
+
+Dockyard can follow container logs and push them to [GoLogs](https://github.com/jdbnet/gologs) or Grafana Loki. Both accept the same JSON body on `POST /loki/api/v1/push`. The shipper runs inside the Dockyard process. Settings are stored in `config.yaml` next to the other options. Passwords and tokens are kept in that file, like `auth.password`, and the web UI masks them after they are saved.
+
+```yaml
+logging:
+  enabled: false
+  url: http://127.0.0.1:8080/loki/api/v1/push
+  type: gologs   # gologs or loki
+  auth: none     # none, basic, or bearer
+  username: ""
+  password: ""
+  token: ""
+  collect_by_default: true
+```
+
+Open Settings, Logging to set the destination, choose none, basic, or bearer authentication, and use Test connection. That sends a single line, `dockyard logging test`. A 401 or 403 from the destination pauses shipping until you save settings again. The same page shows the last successful push, error count, buffered bytes, and any containers that cannot be collected.
+
+Unsent batches are kept in a `logging` directory beside the config file (for `/etc/dockyard/config.yaml`, that is `/etc/dockyard/logging`). The buffer is capped at 32 MiB. Batches go out when they reach 1 MiB or after 2 seconds.
+
+Collection:
+
+- `collect_by_default: true` ships every running container unless it is labelled `dockyard.logs=false`.
+- `collect_by_default: false` ships only containers labelled `dockyard.logs=true`.
+- Only the `json-file` and `local` log drivers can be read. Other drivers are listed as not collectable.
+- Containers that are already running when shipping starts are followed from now. Containers that start afterwards are followed from the beginning. A saved cursor is used after Dockyard restarts so lines are not duplicated or skipped.
+- If Dockyard itself is running in Docker, its own container is skipped unless that container has `dockyard.logs=true`.
+
+Extra labels on a stream come from Docker labels with the prefix `dockyard.logs.label.`. For example, `dockyard.logs.label.env=prod` becomes the Loki label `env=prod`. Each stream also has `host`, `container`, `image`, `stream` (`stdout` or `stderr`), and, for Compose, `compose_project` and `compose_service`.
 
 ## TUI keybindings
 

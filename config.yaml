@@ -21,3 +21,12 @@ compose:
   stacks_dir: /opt/stacks
 updates:
   interval: 1h
+logging:
+  enabled: false
+  url: ""
+  type: gologs
+  auth: none
+  username: ""
+  password: ""
+  token: ""
+  collect_by_default: true

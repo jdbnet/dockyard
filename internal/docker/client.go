@@ -43,6 +43,7 @@ type ContainerSummary struct {
 	RestartCount   int
 	Ports          []string
 	Labels         map[string]string
+	LogDriver      string
 }
 
 type ImageSummary struct {
@@ -196,6 +197,9 @@ func (c *Client) InspectContainer(ctx context.Context, id string) (*InspectResul
 		Health:         healthFromInspect(raw),
 		RestartCount:   raw.RestartCount,
 		Labels:         raw.Config.Labels,
+	}
+	if raw.HostConfig != nil {
+		summary.LogDriver = raw.HostConfig.LogConfig.Type
 	}
 	if raw.State.StartedAt != "" {
 		if t, err := time.Parse(time.RFC3339Nano, raw.State.StartedAt); err == nil {

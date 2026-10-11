@@ -1,6 +1,7 @@
 package config
 
 import (
+	"bytes"
 	"fmt"
 	"log"
 	"net"
@@ -13,6 +14,7 @@ import (
 )
 
 type Config struct {
+	Path        string            `yaml:"-"`
 	Docker      DockerConfig      `yaml:"docker"`
 	Compose     ComposeConfig     `yaml:"compose"`
 	Web         WebConfig         `yaml:"web"`
@@ -22,6 +24,7 @@ type Config struct {
 	RestartLoop RestartLoopConfig `yaml:"restart_loop"`
 	TUI         TUIConfig         `yaml:"tui"`
 	Updates     UpdatesConfig     `yaml:"updates"`
+	Logging     LoggingConfig     `yaml:"logging"`
 }
 
 type DockerConfig struct {
@@ -65,6 +68,17 @@ type UpdatesConfig struct {
 	Interval Duration `yaml:"interval"`
 }
 
+type LoggingConfig struct {
+	Enabled          bool   `yaml:"enabled"`
+	URL              string `yaml:"url"`
+	Type             string `yaml:"type"`
+	Auth             string `yaml:"auth"`
+	Username         string `yaml:"username"`
+	Password         string `yaml:"password"`
+	Token            string `yaml:"token"`
+	CollectByDefault bool   `yaml:"collect_by_default"`
+}
+
 // Duration wraps time.Duration for YAML unmarshaling.
 type Duration struct {
 	time.Duration
@@ -81,6 +95,26 @@ func (d *Duration) UnmarshalYAML(value *yaml.Node) error {
 	}
 	d.Duration = parsed
 	return nil
+}
+
+func (d Duration) MarshalYAML() (any, error) {
+	return FormatDuration(d.Duration), nil
+}
+
+// FormatDuration renders a duration the same way config.yaml writes it.
+func FormatDuration(d time.Duration) string {
+	switch {
+	case d <= 0:
+		return "0s"
+	case d%time.Hour == 0:
+		return fmt.Sprintf("%dh", d/time.Hour)
+	case d%time.Minute == 0:
+		return fmt.Sprintf("%dm", d/time.Minute)
+	case d%time.Second == 0:
+		return fmt.Sprintf("%ds", d/time.Second)
+	default:
+		return d.String()
+	}
 }
 
 func LoadConfig(path string) (*Config, error) {
@@ -101,6 +135,13 @@ func LoadConfig(path string) (*Config, error) {
 	applyEnvOverrides(cfg)
 	if cfg.Updates.Interval.Duration <= 0 {
 		cfg.Updates.Interval.Duration = time.Hour
+	}
+	cfg.Path = path
+	if cfg.Logging.Type == "" {
+		cfg.Logging.Type = "gologs"
+	}
+	if cfg.Logging.Auth == "" {
+		cfg.Logging.Auth = "none"
 	}
 	return cfg, nil
 }
@@ -128,6 +169,11 @@ func defaultConfig() *Config {
 		},
 		Updates: UpdatesConfig{
 			Interval: Duration{time.Hour},
+		},
+		Logging: LoggingConfig{
+			Type:             "gologs",
+			Auth:             "none",
+			CollectByDefault: true,
 		},
 	}
 }
@@ -161,6 +207,88 @@ func applyEnvOverrides(cfg *Config) {
 			cfg.Updates.Interval.Duration = d
 		}
 	}
+}
+
+// SaveLogging rewrites the logging key in the config file and leaves every other key as it is.
+func (c *Config) SaveLogging(logging LoggingConfig) error {
+	return c.saveKeys(map[string]any{"logging": logging})
+}
+
+// SaveGeneral rewrites every settings section except logging.
+func (c *Config) SaveGeneral() error {
+	return c.saveKeys(map[string]any{
+		"docker":       c.Docker,
+		"compose":      c.Compose,
+		"web":          c.Web,
+		"auth":         c.Auth,
+		"stats":        c.Stats,
+		"events":       c.Events,
+		"restart_loop": c.RestartLoop,
+		"tui":          c.TUI,
+		"updates":      c.Updates,
+	})
+}
+
+func (c *Config) saveKeys(keys map[string]any) error {
+	if c.Path == "" {
+		return fmt.Errorf("config path is not set")
+	}
+	raw, err := os.ReadFile(c.Path)
+	var doc yaml.Node
+	switch {
+	case err != nil && os.IsNotExist(err):
+		doc = yaml.Node{Kind: yaml.DocumentNode, Content: []*yaml.Node{{Kind: yaml.MappingNode, Tag: "!!map"}}}
+	case err != nil:
+		return fmt.Errorf("read config: %w", err)
+	case len(bytes.TrimSpace(raw)) == 0:
+		doc = yaml.Node{Kind: yaml.DocumentNode, Content: []*yaml.Node{{Kind: yaml.MappingNode, Tag: "!!map"}}}
+	default:
+		if err := yaml.Unmarshal(raw, &doc); err != nil {
+			return fmt.Errorf("parse config: %w", err)
+		}
+	}
+	if doc.Kind != yaml.DocumentNode || len(doc.Content) == 0 || doc.Content[0].Kind != yaml.MappingNode {
+		return fmt.Errorf("config root is not a map")
+	}
+	for key, value := range keys {
+		var node yaml.Node
+		if err := node.Encode(value); err != nil {
+			return err
+		}
+		upsertMapping(doc.Content[0], key, &node)
+	}
+
+	var buf bytes.Buffer
+	enc := yaml.NewEncoder(&buf)
+	enc.SetIndent(2)
+	if err := enc.Encode(&doc); err != nil {
+		return err
+	}
+	if err := enc.Close(); err != nil {
+		return err
+	}
+	mode := os.FileMode(0o600)
+	if info, statErr := os.Stat(c.Path); statErr == nil {
+		mode = info.Mode().Perm()
+	}
+	tmp := c.Path + ".tmp"
+	if err := os.WriteFile(tmp, buf.Bytes(), mode); err != nil {
+		return err
+	}
+	return os.Rename(tmp, c.Path)
+}
+
+func upsertMapping(root *yaml.Node, key string, value *yaml.Node) {
+	for i := 0; i < len(root.Content)-1; i += 2 {
+		if root.Content[i].Value == key {
+			root.Content[i+1] = value
+			return
+		}
+	}
+	root.Content = append(root.Content,
+		&yaml.Node{Kind: yaml.ScalarNode, Value: key, Tag: "!!str"},
+		value,
+	)
 }
 
 func (c *Config) Addr() string {

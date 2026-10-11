@@ -1,0 +1,443 @@
+<script setup>
+import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { getLoggingSettings, getLoggingStatus, getSettings, saveLoggingSettings, saveSettings, testLoggingSettings } from '@/api/client'
+import { errorMessage } from '@/lib/errors'
+
+const form = ref({
+  enabled: false,
+  url: '',
+  type: 'gologs',
+  auth: 'none',
+  username: '',
+  password: '',
+  token: '',
+  collect_by_default: true,
+})
+const passwordSet = ref(false)
+const tokenSet = ref(false)
+const status = ref({
+  state: 'disabled',
+  error_count: 0,
+  buffered_bytes: 0,
+  dropped: 0,
+  followed: 0,
+  not_collectable: [],
+})
+const general = ref({
+  docker_socket: '',
+  stacks_dir: '',
+  web_enabled: false,
+  web_port: 8080,
+  web_bind: '127.0.0.1',
+  auth_username: '',
+  auth_password: '',
+  stats_interval: '5s',
+  stats_buffer_size: 60,
+  events_fallback_refresh: '30s',
+  restart_threshold: 3,
+  restart_window: '5m',
+  tui_refresh_rate: '100ms',
+  updates_interval: '1h',
+})
+const authPasswordSet = ref(false)
+const savingGeneral = ref(false)
+const generalMessage = ref('')
+const generalError = ref(false)
+const saving = ref(false)
+const testing = ref(false)
+const message = ref('')
+const messageError = ref(false)
+let timer
+
+const showUser = computed(() => form.value.auth === 'basic')
+const showToken = computed(() => form.value.auth === 'bearer')
+
+onMounted(async () => {
+  await loadGeneral()
+  await load()
+  await refreshStatus()
+  timer = setInterval(refreshStatus, 3000)
+})
+
+onUnmounted(() => {
+  clearInterval(timer)
+})
+
+function applySettings(data) {
+  form.value = {
+    enabled: data.enabled,
+    url: data.url || '',
+    type: data.type || 'gologs',
+    auth: data.auth || 'none',
+    username: data.username || '',
+    password: '',
+    token: '',
+    collect_by_default: data.collect_by_default,
+  }
+  passwordSet.value = !!data.password_set
+  tokenSet.value = !!data.token_set
+}
+
+function applyGeneral(data) {
+  general.value = {
+    docker_socket: data.docker_socket || '',
+    stacks_dir: data.stacks_dir || '',
+    web_enabled: !!data.web_enabled,
+    web_port: data.web_port || 8080,
+    web_bind: data.web_bind || '',
+    auth_username: data.auth_username || '',
+    auth_password: '',
+    stats_interval: data.stats_interval || '5s',
+    stats_buffer_size: data.stats_buffer_size || 60,
+    events_fallback_refresh: data.events_fallback_refresh || '30s',
+    restart_threshold: data.restart_threshold || 3,
+    restart_window: data.restart_window || '5m',
+    tui_refresh_rate: data.tui_refresh_rate || '100ms',
+    updates_interval: data.updates_interval || '1h',
+  }
+  authPasswordSet.value = !!data.auth_password_set
+}
+
+async function loadGeneral() {
+  try {
+    applyGeneral(await getSettings())
+  } catch (err) {
+    setGeneralMessage(errorMessage(err, 'Failed to load settings'), true)
+  }
+}
+
+async function saveGeneral() {
+  savingGeneral.value = true
+  setGeneralMessage('', false)
+  try {
+    applyGeneral(await saveSettings(general.value))
+    setGeneralMessage('Settings saved to config.yaml. Authentication applies now. The Docker socket, web address, stacks directory, and intervals apply after a restart.', false)
+  } catch (err) {
+    setGeneralMessage(errorMessage(err, 'Failed to save settings'), true)
+  } finally {
+    savingGeneral.value = false
+  }
+}
+
+function setGeneralMessage(text, isError) {
+  generalMessage.value = text
+  generalError.value = isError
+}
+
+async function load() {
+  try {
+    applySettings(await getLoggingSettings())
+  } catch (err) {
+    setMessage(errorMessage(err, 'Failed to load logging settings'), true)
+  }
+}
+
+async function refreshStatus() {
+  try {
+    const data = await getLoggingStatus()
+    data.not_collectable = data.not_collectable || []
+    status.value = data
+  } catch {
+    // keep the last status when the request fails
+  }
+}
+
+function payload() {
+  return {
+    enabled: form.value.enabled,
+    url: form.value.url.trim(),
+    type: form.value.type,
+    auth: form.value.auth,
+    username: form.value.username,
+    password: form.value.password,
+    token: form.value.token,
+    collect_by_default: form.value.collect_by_default,
+  }
+}
+
+async function save() {
+  saving.value = true
+  setMessage('', false)
+  try {
+    applySettings(await saveLoggingSettings(payload()))
+    setMessage('Logging settings saved.', false)
+    await refreshStatus()
+  } catch (err) {
+    setMessage(errorMessage(err, 'Failed to save logging settings'), true)
+  } finally {
+    saving.value = false
+  }
+}
+
+async function testConnection() {
+  testing.value = true
+  setMessage('', false)
+  try {
+    await testLoggingSettings(payload())
+    setMessage('Test line accepted.', false)
+  } catch (err) {
+    setMessage(errorMessage(err, 'Test connection failed'), true)
+  } finally {
+    testing.value = false
+  }
+}
+
+function setMessage(text, isError) {
+  message.value = text
+  messageError.value = isError
+}
+
+function formatWhen(value) {
+  if (!value || String(value).startsWith('0001-')) return 'Never'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return 'Never'
+  return date.toLocaleString('en-GB')
+}
+
+function formatBytes(value) {
+  const n = Number(value) || 0
+  if (n < 1024) return `${n} B`
+  const units = ['KB', 'MB', 'GB']
+  let size = n / 1024
+  let unit = units[0]
+  for (let i = 0; i < units.length; i += 1) {
+    unit = units[i]
+    if (size < 1024 || i === units.length - 1) break
+    size /= 1024
+  }
+  return `${size.toFixed(1)} ${unit}`
+}
+
+const stateLabel = computed(() => {
+  if (status.value.state === 'paused_auth') return 'Paused'
+  if (status.value.state === 'running') return 'Running'
+  return 'Off'
+})
+</script>
+
+<template>
+  <div class="mx-auto max-w-3xl space-y-4">
+    <section class="card space-y-4">
+      <div>
+        <h1 class="text-lg font-semibold text-heading">General</h1>
+        <p class="mt-1 text-sm text-muted">
+          Saved to config.yaml. Environment variables still override these values when Dockyard starts.
+        </p>
+      </div>
+
+      <div class="grid gap-4 sm:grid-cols-2">
+        <div>
+          <label class="mb-1 block text-sm text-muted" for="docker-socket">Docker socket</label>
+          <input id="docker-socket" v-model="general.docker_socket" type="text" class="input-field" />
+        </div>
+        <div>
+          <label class="mb-1 block text-sm text-muted" for="stacks-dir">Stacks directory</label>
+          <input id="stacks-dir" v-model="general.stacks_dir" type="text" class="input-field" />
+        </div>
+      </div>
+
+      <div class="grid gap-4 sm:grid-cols-3">
+        <label class="flex items-center gap-2 text-sm sm:col-span-3">
+          <input v-model="general.web_enabled" type="checkbox" class="h-4 w-4 accent-[#1ebe8a]" />
+          Enable the web UI on startup
+        </label>
+        <div>
+          <label class="mb-1 block text-sm text-muted" for="web-bind">Bind address</label>
+          <input id="web-bind" v-model="general.web_bind" type="text" class="input-field" />
+        </div>
+        <div>
+          <label class="mb-1 block text-sm text-muted" for="web-port">Port</label>
+          <input id="web-port" v-model.number="general.web_port" type="number" min="1" max="65535" class="input-field" />
+        </div>
+      </div>
+      <p class="text-sm text-muted">The Docker socket, stacks directory, and web address apply after a restart.</p>
+
+      <div class="grid gap-4 sm:grid-cols-2">
+        <div>
+          <label class="mb-1 block text-sm text-muted" for="auth-user">Login username</label>
+          <input id="auth-user" v-model="general.auth_username" type="text" autocomplete="off" class="input-field" />
+        </div>
+        <div>
+          <label class="mb-1 block text-sm text-muted" for="auth-pass">Login password</label>
+          <input
+            id="auth-pass"
+            v-model="general.auth_password"
+            type="password"
+            autocomplete="new-password"
+            class="input-field"
+            :placeholder="authPasswordSet ? 'Saved' : ''"
+          />
+        </div>
+      </div>
+      <p class="text-sm text-muted">Leave the username blank to disable login. Leave the password blank to keep the saved one. Login changes apply immediately.</p>
+
+      <div class="grid gap-4 sm:grid-cols-2">
+        <div>
+          <label class="mb-1 block text-sm text-muted" for="stats-interval">Stats interval</label>
+          <input id="stats-interval" v-model="general.stats_interval" type="text" class="input-field" />
+        </div>
+        <div>
+          <label class="mb-1 block text-sm text-muted" for="stats-buffer">Stats buffer size</label>
+          <input id="stats-buffer" v-model.number="general.stats_buffer_size" type="number" min="1" class="input-field" />
+        </div>
+        <div>
+          <label class="mb-1 block text-sm text-muted" for="events-refresh">Event refresh</label>
+          <input id="events-refresh" v-model="general.events_fallback_refresh" type="text" class="input-field" />
+        </div>
+        <div>
+          <label class="mb-1 block text-sm text-muted" for="updates-interval">Update scan interval</label>
+          <input id="updates-interval" v-model="general.updates_interval" type="text" class="input-field" />
+        </div>
+        <div>
+          <label class="mb-1 block text-sm text-muted" for="restart-threshold">Restart threshold</label>
+          <input id="restart-threshold" v-model.number="general.restart_threshold" type="number" min="1" class="input-field" />
+        </div>
+        <div>
+          <label class="mb-1 block text-sm text-muted" for="restart-window">Restart window</label>
+          <input id="restart-window" v-model="general.restart_window" type="text" class="input-field" />
+        </div>
+        <div>
+          <label class="mb-1 block text-sm text-muted" for="tui-refresh">TUI refresh</label>
+          <input id="tui-refresh" v-model="general.tui_refresh_rate" type="text" class="input-field" />
+        </div>
+      </div>
+      <p class="text-sm text-muted">Intervals apply after a restart. The restart threshold applies immediately. Durations use values such as 100ms, 5s, 5m, or 1h.</p>
+
+      <button type="button" class="btn-primary" :disabled="savingGeneral" @click="saveGeneral">
+        {{ savingGeneral ? 'Saving…' : 'Save general settings' }}
+      </button>
+      <p v-if="generalMessage" class="text-sm" :class="generalError ? 'text-danger' : 'text-accent'">{{ generalMessage }}</p>
+    </section>
+
+    <section class="card space-y-4">
+      <div>
+        <h1 class="text-lg font-semibold text-heading">Logging</h1>
+        <p class="mt-1 text-sm text-muted">
+          Ship container stdout and stderr to GoLogs or Loki.
+        </p>
+      </div>
+
+      <label class="flex items-center gap-2 text-sm">
+        <input v-model="form.enabled" type="checkbox" class="h-4 w-4 accent-[#1ebe8a]" />
+        Enabled
+      </label>
+
+      <div>
+        <label class="mb-1 block text-sm text-muted" for="log-url">Destination URL</label>
+        <input id="log-url" v-model="form.url" type="url" class="input-field" placeholder="http://127.0.0.1:3100/loki/api/v1/push" />
+      </div>
+
+      <div class="grid gap-4 sm:grid-cols-2">
+        <div>
+          <label class="mb-1 block text-sm text-muted" for="log-type">Type</label>
+          <select id="log-type" v-model="form.type" class="input-field">
+            <option value="gologs">GoLogs</option>
+            <option value="loki">Loki</option>
+          </select>
+        </div>
+        <div>
+          <label class="mb-1 block text-sm text-muted" for="log-auth">Authentication</label>
+          <select id="log-auth" v-model="form.auth" class="input-field">
+            <option value="none">None</option>
+            <option value="basic">Basic</option>
+            <option value="bearer">Bearer</option>
+          </select>
+        </div>
+      </div>
+
+      <div v-if="showUser" class="grid gap-4 sm:grid-cols-2">
+        <div>
+          <label class="mb-1 block text-sm text-muted" for="log-user">Username</label>
+          <input id="log-user" v-model="form.username" type="text" autocomplete="off" class="input-field" />
+        </div>
+        <div>
+          <label class="mb-1 block text-sm text-muted" for="log-pass">Password</label>
+          <input
+            id="log-pass"
+            v-model="form.password"
+            type="password"
+            autocomplete="new-password"
+            class="input-field"
+            :placeholder="passwordSet ? 'Saved' : ''"
+          />
+        </div>
+      </div>
+
+      <div v-if="showToken">
+        <label class="mb-1 block text-sm text-muted" for="log-token">Bearer token</label>
+        <input
+          id="log-token"
+          v-model="form.token"
+          type="password"
+          autocomplete="new-password"
+          class="input-field"
+          :placeholder="tokenSet ? 'Saved' : ''"
+        />
+      </div>
+
+      <label class="flex items-center gap-2 text-sm">
+        <input v-model="form.collect_by_default" type="checkbox" class="h-4 w-4 accent-[#1ebe8a]" />
+        Collect logs by default
+      </label>
+
+      <div class="flex flex-wrap gap-2">
+        <button type="button" class="btn-primary" :disabled="saving" @click="save">
+          {{ saving ? 'Saving…' : 'Save' }}
+        </button>
+        <button type="button" class="btn-secondary" :disabled="testing" @click="testConnection">
+          {{ testing ? 'Testing…' : 'Test connection' }}
+        </button>
+      </div>
+
+      <p v-if="message" class="text-sm" :class="messageError ? 'text-danger' : 'text-accent'">{{ message }}</p>
+    </section>
+
+    <section class="card space-y-4">
+      <div class="flex items-center justify-between gap-3">
+        <h2 class="text-lg font-semibold text-heading">Shipping</h2>
+        <span class="text-sm" :class="status.state === 'paused_auth' ? 'text-danger' : 'text-muted'">{{ stateLabel }}</span>
+      </div>
+
+      <div
+        v-if="status.state === 'paused_auth'"
+        class="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-danger"
+      >
+        Authentication failed ({{ status.pause_code }}). Shipping is paused until you save settings.
+      </div>
+
+      <dl class="grid grid-cols-2 gap-3 text-sm sm:grid-cols-3">
+        <div>
+          <dt class="text-muted">Last successful push</dt>
+          <dd class="text-heading">{{ formatWhen(status.last_success) }}</dd>
+        </div>
+        <div>
+          <dt class="text-muted">Errors</dt>
+          <dd class="text-heading">{{ status.error_count }}</dd>
+        </div>
+        <div>
+          <dt class="text-muted">Buffered</dt>
+          <dd class="text-heading">{{ formatBytes(status.buffered_bytes) }}</dd>
+        </div>
+        <div>
+          <dt class="text-muted">Followed</dt>
+          <dd class="text-heading">{{ status.followed }}</dd>
+        </div>
+        <div>
+          <dt class="text-muted">Dropped batches</dt>
+          <dd class="text-heading">{{ status.dropped }}</dd>
+        </div>
+      </dl>
+      <p v-if="status.last_error && status.state !== 'paused_auth'" class="text-sm text-danger">{{ status.last_error }}</p>
+
+      <div v-if="status.not_collectable.length">
+        <h3 class="mb-2 text-sm font-medium text-heading">Not collectable</h3>
+        <ul class="space-y-1 text-sm text-muted">
+          <li v-for="item in status.not_collectable" :key="item.id">
+            <span class="text-heading">{{ item.name || item.id }}</span>
+            <span> · {{ item.reason }}</span>
+          </li>
+        </ul>
+      </div>
+    </section>
+  </div>
+</template>

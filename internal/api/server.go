@@ -98,6 +98,13 @@ func (s *Server) registerRoutes() {
 	s.mux.HandleFunc("GET /api/v1/updates", s.handleListUpdates)
 	s.mux.HandleFunc("POST /api/v1/updates/scan", s.handleScanUpdates)
 
+	s.mux.HandleFunc("GET /api/v1/settings", s.handleGetSettings)
+	s.mux.HandleFunc("PUT /api/v1/settings", s.handlePutSettings)
+	s.mux.HandleFunc("GET /api/v1/settings/logging", s.handleGetLogging)
+	s.mux.HandleFunc("PUT /api/v1/settings/logging", s.handlePutLogging)
+	s.mux.HandleFunc("POST /api/v1/settings/logging/test", s.handleTestLogging)
+	s.mux.HandleFunc("GET /api/v1/settings/logging/status", s.handleLoggingStatus)
+
 	s.mux.HandleFunc("GET /ws/events", s.handleWSEvents)
 	s.mux.HandleFunc("GET /ws/stats", s.handleWSStats)
 	s.mux.HandleFunc("GET /ws/logs/{id}", s.handleWSLogs)

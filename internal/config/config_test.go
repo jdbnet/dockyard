@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -23,6 +24,76 @@ func TestLoadConfigDefaults(t *testing.T) {
 	}
 	if cfg.Updates.Interval.Duration != time.Hour {
 		t.Fatalf("unexpected updates interval: %s", cfg.Updates.Interval.Duration)
+	}
+	if !cfg.Logging.CollectByDefault || cfg.Logging.Enabled || cfg.Logging.Type != "gologs" || cfg.Logging.Auth != "none" {
+		t.Fatalf("unexpected logging defaults: %+v", cfg.Logging)
+	}
+}
+
+func TestSaveLoggingPreservesOtherKeys(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "config.yaml")
+	if err := os.WriteFile(path, []byte("docker:\n  socket: /tmp/docker.sock\nauth:\n  username: admin\n  password: secret\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := LoadConfig(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = cfg.SaveLogging(LoggingConfig{
+		Enabled:          true,
+		URL:              "http://logs.example/loki/api/v1/push",
+		Type:             "loki",
+		Auth:             "bearer",
+		Token:            "tok",
+		CollectByDefault: false,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := string(raw)
+	if !strings.Contains(text, "/tmp/docker.sock") || !strings.Contains(text, "secret") || !strings.Contains(text, "tok") {
+		t.Fatalf("config lost data:\n%s", text)
+	}
+	again, err := LoadConfig(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if again.Docker.Socket != "/tmp/docker.sock" || again.Auth.Password != "secret" {
+		t.Fatalf("reloaded config = %+v", again)
+	}
+	if again.Logging.Token != "tok" || again.Logging.CollectByDefault || again.Logging.Type != "loki" {
+		t.Fatalf("logging = %+v", again.Logging)
+	}
+}
+
+func TestSaveGeneralPreservesLogging(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "config.yaml")
+	if err := os.WriteFile(path, []byte("logging:\n  token: hidden\n  type: gologs\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := LoadConfig(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg.Stats.Interval.Duration = 5 * time.Minute
+	cfg.Auth.Password = "secret"
+	if err := cfg.SaveGeneral(); err != nil {
+		t.Fatal(err)
+	}
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := string(raw)
+	if !strings.Contains(text, "token: hidden") || !strings.Contains(text, "secret") {
+		t.Fatalf("config lost data:\n%s", text)
+	}
+	if !strings.Contains(text, "interval: 5m\n") && !strings.Contains(text, "interval: 5m\r\n") {
+		t.Fatalf("duration was not written as 5m:\n%s", text)
 	}
 }
 

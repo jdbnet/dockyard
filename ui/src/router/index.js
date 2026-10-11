@@ -9,6 +9,7 @@ import Volumes from '@/views/Volumes.vue'
 import Networks from '@/views/Networks.vue'
 import Ports from '@/views/Ports.vue'
 import Updates from '@/views/Updates.vue'
+import Settings from '@/views/Settings.vue'
 import Login from '@/views/Login.vue'
 
 const router = createRouter({
@@ -24,6 +25,7 @@ const router = createRouter({
     { path: '/volumes', name: 'volumes', component: Volumes },
     { path: '/networks', name: 'networks', component: Networks },
     { path: '/ports', name: 'ports', component: Ports },
+    { path: '/settings', name: 'settings', component: Settings },
   ],
 })
 

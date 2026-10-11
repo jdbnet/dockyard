@@ -20,6 +20,13 @@ func newRestartTracker(threshold int, window time.Duration) *restartTracker {
 	}
 }
 
+func (r *restartTracker) configure(threshold int, window time.Duration) {
+	r.mu.Lock()
+	r.threshold = threshold
+	r.window = window
+	r.mu.Unlock()
+}
+
 func (r *restartTracker) record(id string, t time.Time) bool {
 	r.mu.Lock()
 	defer r.mu.Unlock()
