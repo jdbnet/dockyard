@@ -2,7 +2,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import {
-  Menu, X, LayoutDashboard, Layers, RefreshCw, Image, HardDrive, Network, Plug, Settings, LogOut, Sun, Moon,
+  Menu, X, LayoutDashboard, Box, Layers, RefreshCw, Image, HardDrive, Network, Plug, Settings, LogOut, Sun, Moon,
 } from '@lucide/vue'
 import { useEngineStore } from '@/stores/engine'
 import { useAuthStore } from '@/stores/auth'
@@ -45,7 +45,8 @@ async function loadUpdateCount() {
 }
 
 const nav = [
-  { to: '/', label: 'Dashboard', icon: LayoutDashboard, match: (p) => p === '/' || p.startsWith('/containers/') },
+  { to: '/', label: 'Dashboard', icon: LayoutDashboard, match: (p) => p === '/' },
+  { to: '/containers', label: 'Containers', icon: Box, match: (p) => p === '/containers' || p.startsWith('/containers/') },
   { to: '/stacks', label: 'Stacks', icon: Layers, match: (p) => p.startsWith('/stacks') },
   { to: '/updates', label: 'Updates', icon: RefreshCw, match: (p) => p.startsWith('/updates') },
   { to: '/images', label: 'Images', icon: Image, match: (p) => p.startsWith('/images') },

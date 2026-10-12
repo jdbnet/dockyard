@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import Dashboard from '@/views/Dashboard.vue'
+import Containers from '@/views/Containers.vue'
 import ContainerDetail from '@/views/ContainerDetail.vue'
 import Stacks from '@/views/Stacks.vue'
 import StackDetail from '@/views/StackDetail.vue'
@@ -17,6 +18,7 @@ const router = createRouter({
   routes: [
     { path: '/login', name: 'login', component: Login, meta: { public: true } },
     { path: '/', name: 'dashboard', component: Dashboard },
+    { path: '/containers', name: 'containers', component: Containers },
     { path: '/containers/:id', name: 'container', component: ContainerDetail },
     { path: '/stacks', name: 'stacks', component: Stacks },
     { path: '/stacks/:name', name: 'stack', component: StackDetail },
