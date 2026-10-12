@@ -1,0 +1,26 @@
+#!/bin/sh
+set -e
+
+CONFIG=/etc/dockyard/config.yaml
+KEEP=/etc/dockyard/config.yaml.keep
+TEMPLATE=/usr/share/dockyard/config.yaml
+
+if [ -f "$KEEP" ]; then
+	install -d -m 0755 /etc/dockyard
+	mv -f "$KEEP" "$CONFIG"
+elif [ ! -e "$CONFIG" ] && [ -f "$TEMPLATE" ]; then
+	install -d -m 0755 /etc/dockyard
+	install -m 0644 "$TEMPLATE" "$CONFIG"
+fi
+
+if [ "$1" = "configure" ] && [ -d /run/systemd/system ]; then
+	systemctl daemon-reload || true
+	if [ -z "$2" ]; then
+		systemctl enable dockyard.service || true
+		systemctl restart dockyard.service || true
+	else
+		systemctl try-restart dockyard.service || true
+	fi
+fi
+
+exit 0

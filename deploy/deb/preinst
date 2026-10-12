@@ -1,0 +1,23 @@
+#!/bin/sh
+set -e
+
+CONFIG=/etc/dockyard/config.yaml
+KEEP=/etc/dockyard/config.yaml.keep
+CONFFILES=/var/lib/dpkg/info/dockyard.conffiles
+
+case "$1" in
+install|upgrade)
+	# Older packages shipped the config as a conffile, which makes dpkg ask
+	# on every upgrade. Drop it from that list and hold a copy so the local
+	# file can be put back after unpack. New packages do not ship this path.
+	if [ -f "$CONFIG" ]; then
+		cp -a "$CONFIG" "$KEEP"
+	fi
+	if [ -f "$CONFFILES" ] && grep -qx "$CONFIG" "$CONFFILES"; then
+		grep -vx "$CONFIG" "$CONFFILES" > "$CONFFILES.tmp"
+		mv "$CONFFILES.tmp" "$CONFFILES"
+	fi
+	;;
+esac
+
+exit 0

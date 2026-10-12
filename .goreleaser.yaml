@@ -49,12 +49,16 @@ nfpms:
       - src: deploy/dockyard.service
         dst: /lib/systemd/system/dockyard.service
       - src: config.yaml
-        dst: /etc/dockyard/config.yaml
-        type: config|noreplace
+        dst: /usr/share/dockyard/config.yaml
       - dst: /opt/stacks
         type: dir
         file_info:
           mode: 0755
+    scripts:
+      preinstall: deploy/deb/preinst
+      postinstall: deploy/deb/postinst
+      preremove: deploy/deb/prerm
+      postremove: deploy/deb/postrm
     deb:
       compression: gzip
 
