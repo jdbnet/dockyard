@@ -4,10 +4,25 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/jdbnet/dockyard/internal/engine"
 )
+
+const noticeDuration = 4 * time.Second
+
+type noticeClearMsg struct{ id int }
+
+func (m *model) pushNotice(status, errText string) tea.Cmd {
+	m.statusMsg = status
+	m.errMsg = errText
+	m.noticeID++
+	id := m.noticeID
+	return tea.Tick(noticeDuration, func(time.Time) tea.Msg {
+		return noticeClearMsg{id: id}
+	})
+}
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
@@ -81,23 +96,24 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
+	case noticeClearMsg:
+		if msg.id == m.noticeID {
+			m.statusMsg = ""
+			m.errMsg = ""
+		}
+		return m, nil
+
 	case scanUpdatesDoneMsg:
 		if msg.err != nil {
-			m.errMsg = msg.err.Error()
-			return m, nil
+			return m, m.pushNotice("", msg.err.Error())
 		}
-		m.statusMsg = "scanned"
-		m.errMsg = ""
-		return m, refreshRowsCmd(m.eng, viewUpdates)
+		return m, tea.Batch(m.pushNotice("scanned", ""), refreshRowsCmd(m.eng, viewUpdates))
 
 	case statusLineMsg:
-		m.statusMsg = string(msg)
-		m.errMsg = ""
-		return m, nil
+		return m, m.pushNotice(string(msg), "")
 
 	case errLineMsg:
-		m.errMsg = msg.Error()
-		return m, nil
+		return m, m.pushNotice("", msg.Error())
 
 	case inspectMsg:
 		m.inspectText = string(msg)
@@ -132,7 +148,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case logFollowDoneMsg:
 		m.logFollowCh = nil
 		if msg.err != nil {
-			m.errMsg = msg.err.Error()
+			return m, m.pushNotice("", msg.err.Error())
 		}
 		return m, nil
 
@@ -153,10 +169,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.composeTA = m.initComposeEditor(m.width, m.height)
 		m.composeTA.SetValue(msg.content)
 		m.editMode = editCompose
+		cmd := m.composeTA.Focus()
 		if !msg.editable {
-			m.statusMsg = "read-only stack"
+			cmd = tea.Batch(cmd, m.pushNotice("read-only stack", ""))
 		}
-		return m, m.composeTA.Focus()
+		return m, cmd
 
 	case composeSavedMsg:
 		name := msg.name
@@ -164,7 +181,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.editMode = editNone
 		m.stackNew = false
 		m.view = viewStacks
-		m.statusMsg = "saved"
+		notice := m.pushNotice("saved", "")
 		if isNew {
 			m.confirm = &confirmDialog{
 				message: fmt.Sprintf("Start stack %s now?", name),
@@ -173,7 +190,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				},
 			}
 		}
-		return m, refreshRowsCmd(m.eng, viewStacks)
+		return m, tea.Batch(notice, refreshRowsCmd(m.eng, viewStacks))
 	}
 
 	return m, nil
@@ -187,7 +204,7 @@ func (m model) updateConfirm(msg tea.KeyPressMsg) (model, tea.Cmd) {
 		return m, cmd
 	case "n", "N", "esc", "q":
 		m.confirm = nil
-		m.statusMsg = "cancelled"
+		return m, m.pushNotice("cancelled", "")
 	}
 	return m, nil
 }
@@ -201,8 +218,7 @@ func (m model) updateNewStackName(msg tea.KeyPressMsg) (model, tea.Cmd) {
 	case "enter":
 		name := strings.TrimSpace(m.nameInput.Value())
 		if name == "" {
-			m.statusMsg = "name required"
-			return m, nil
+			return m, m.pushNotice("name required", "")
 		}
 		m.stackName = name
 		m.stackNew = true
@@ -224,8 +240,7 @@ func (m model) updateComposeEditor(msg tea.KeyPressMsg) (model, tea.Cmd) {
 		return m.backToStacks()
 	case "ctrl+s":
 		if !m.stackNew && !m.stackEditable {
-			m.errMsg = "stack is read-only"
-			return m, nil
+			return m, m.pushNotice("", "stack is read-only")
 		}
 		content := m.composeTA.Value()
 		name := m.stackName
@@ -302,8 +317,7 @@ func (m model) updateContainers(msg tea.KeyPressMsg) (model, tea.Cmd) {
 			return m, nil
 		}
 		if sel.meta.State != "running" {
-			m.statusMsg = "container is not running"
-			return m, nil
+			return m, m.pushNotice("container is not running", "")
 		}
 		return m, cmdShell(m.eng, sel.id)
 	case "u":
@@ -351,8 +365,7 @@ func (m model) updateUpdates(msg tea.KeyPressMsg) (model, tea.Cmd) {
 	case "u":
 		sel := m.selected()
 		if sel == nil || sel.id == "" {
-			m.statusMsg = "nothing to update"
-			return m, nil
+			return m, m.pushNotice("nothing to update", "")
 		}
 		return m.startContainerUpdate(sel.id)
 	}
@@ -393,8 +406,7 @@ func (m model) updateImages(msg tea.KeyPressMsg) (model, tea.Cmd) {
 			}
 		}
 		if unused == 0 {
-			m.statusMsg = "no unused images"
-			return m, nil
+			return m, m.pushNotice("no unused images", "")
 		}
 		m.confirm = &confirmDialog{
 			message: fmt.Sprintf("Prune %d unused image(s)?", unused),
@@ -473,8 +485,7 @@ func (m model) updateStacks(msg tea.KeyPressMsg) (model, tea.Cmd) {
 			return m, nil
 		}
 		if !sel.stack.Managed {
-			m.errMsg = "cannot delete external stack"
-			return m, nil
+			return m, m.pushNotice("", "cannot delete external stack")
 		}
 		name := sel.id
 		m.confirm = &confirmDialog{
@@ -520,8 +531,7 @@ func (m model) updateCommand(msg tea.KeyPressMsg) (model, tea.Cmd) {
 		if strings.HasPrefix(cmd, "exec ") {
 			shellCmd := strings.TrimSpace(strings.TrimPrefix(cmd, "exec "))
 			if shellCmd == "" {
-				m.statusMsg = "usage: exec <command>"
-				return m, nil
+				return m, m.pushNotice("usage: exec <command>", "")
 			}
 			sel := m.selected()
 			if sel == nil || sel.id == "" {
@@ -547,8 +557,7 @@ func (m model) updateCommand(msg tea.KeyPressMsg) (model, tea.Cmd) {
 			m.cursor = 0
 			return m, refreshRowsCmd(m.eng, m.view)
 		}
-		m.statusMsg = "unknown command: " + cmd
-		return m, nil
+		return m, m.pushNotice("unknown command: "+cmd, "")
 	default:
 		key := msg.Key()
 		if key.Code == tea.KeyBackspace {
@@ -611,9 +620,9 @@ func (m model) updateLogs(msg tea.KeyPressMsg) (model, tea.Cmd) {
 		m.logAutoScroll = true
 		m = m.scrollLogsToBottom()
 	case "h", "left":
-		m.logHOffset = clampScroll(m.logHOffset-hStep, maxDisplayWidth(m.formattedLogLines()), m.width)
+		m.logHOffset = clampScroll(m.logHOffset-hStep, maxDisplayWidth(m.formattedLogLines()), m.logContentWidth())
 	case "l", "right":
-		m.logHOffset = clampScroll(m.logHOffset+hStep, maxDisplayWidth(m.formattedLogLines()), m.width)
+		m.logHOffset = clampScroll(m.logHOffset+hStep, maxDisplayWidth(m.formattedLogLines()), m.logContentWidth())
 	case "H":
 		m.logHOffset = 0
 	case "L":
@@ -647,10 +656,7 @@ func (m model) updateLogs(msg tea.KeyPressMsg) (model, tea.Cmd) {
 func (m model) updateInspect(msg tea.KeyPressMsg) (model, tea.Cmd) {
 	lines := strings.Split(m.inspectText, "\n")
 	page := m.scrollPageSize()
-	visible := m.contentHeight() - 1
-	if visible < 1 {
-		visible = 1
-	}
+	visible := m.detailVisibleLines()
 	switch msg.String() {
 	case "q", "esc":
 		return m.backToList()

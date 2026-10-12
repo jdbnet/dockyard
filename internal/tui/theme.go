@@ -27,11 +27,7 @@ var (
 	styleAccent      = lipgloss.NewStyle().Foreground(colorPrimary)
 	styleSelected    = lipgloss.NewStyle().Foreground(colorPrimary).Bold(true)
 	styleMuted       = lipgloss.NewStyle().Foreground(colorMuted)
-	styleHelp        = lipgloss.NewStyle().
-				Border(lipgloss.NormalBorder()).
-				BorderForeground(colorBorder).
-				Padding(1, 2)
-	styleWarn       = lipgloss.NewStyle().Foreground(colorWarn)
+	styleWarn = lipgloss.NewStyle().Foreground(colorWarn)
 	styleTablePanel = lipgloss.NewStyle().
 			Border(lipgloss.NormalBorder()).
 			BorderForeground(colorBorder).

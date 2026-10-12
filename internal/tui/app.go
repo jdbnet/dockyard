@@ -52,6 +52,7 @@ type model struct {
 	confirm         *confirmDialog
 	statusMsg       string
 	errMsg          string
+	noticeID        int
 	width           int
 	height          int
 	events          <-chan engine.Event

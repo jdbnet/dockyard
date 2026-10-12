@@ -69,9 +69,13 @@ func (m *model) initNameInput() textinput.Model {
 }
 
 func (m *model) initComposeEditor(width, height int) textarea.Model {
+	frameX, frameY := styleTablePanel.GetFrameSize()
+	innerW := max(20, width-frameX)
+	body := max(1, height-2) // header + footer
+	innerH := max(1, body-frameY)
 	ta := textarea.New()
-	ta.SetWidth(max(20, width-4))
-	ta.SetHeight(max(5, height-8))
+	ta.SetWidth(innerW)
+	ta.SetHeight(max(5, innerH-1)) // one row for the hint
 	ta.ShowLineNumbers = true
 	return ta
 }

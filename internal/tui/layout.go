@@ -54,12 +54,6 @@ func scrollableLines(m model, raw []string) []string {
 
 func (m model) contentHeight() int {
 	h := m.height - 2 // header + footer
-	if m.confirm != nil {
-		h--
-	}
-	if m.helpOpen {
-		h -= 8
-	}
 	if m.errMsg != "" || m.statusMsg != "" {
 		h--
 	}
@@ -132,27 +126,52 @@ func horizontalScrollStep(viewportWidth int) int {
 	return step
 }
 
-func (m model) fillHeight(content string, height int) string {
-	lines := strings.Split(content, "\n")
-	for len(lines) > 0 && lines[len(lines)-1] == "" {
-		lines = lines[:len(lines)-1]
+func (m model) panelBox(outerH int) (innerW, innerH int) {
+	frameX, frameY := styleTablePanel.GetFrameSize()
+	return max(1, m.width-frameX), max(1, outerH-frameY)
+}
+
+func (m model) logContentWidth() int {
+	innerW, _ := m.panelBox(m.contentHeight())
+	return innerW
+}
+
+// detailVisibleLines is the scrollable area inside the bordered panel, under the one-line hint.
+func (m model) detailVisibleLines() int {
+	_, innerH := m.panelBox(m.contentHeight())
+	visible := innerH - 1
+	if visible < 1 {
+		return 1
 	}
-	if len(lines) > height {
-		lines = lines[:height]
+	return visible
+}
+
+func (m model) renderPanel(outerH int, content string) string {
+	innerW, innerH := m.panelBox(outerH)
+	return styleTablePanel.Width(m.width).Height(outerH).Render(fitBox(content, innerW, innerH))
+}
+
+func fitBox(content string, width, height int) string {
+	raw := strings.Split(content, "\n")
+	for len(raw) > 0 && raw[len(raw)-1] == "" {
+		raw = raw[:len(raw)-1]
 	}
-	lineStyle := lipgloss.NewStyle().Width(m.width)
-	padded := make([]string, height)
+	if len(raw) > height {
+		raw = raw[:height]
+	}
+	out := make([]string, height)
 	for i := 0; i < height; i++ {
 		line := ""
-		if i < len(lines) {
-			line = lines[i]
+		if i < len(raw) {
+			line = raw[i]
 		}
-		if lipgloss.Width(line) < m.width {
-			line = line + strings.Repeat(" ", m.width-lipgloss.Width(line))
+		line = truncateWidth(line, width)
+		if gap := width - lipgloss.Width(line); gap > 0 {
+			line += strings.Repeat(" ", gap)
 		}
-		padded[i] = lineStyle.Render(truncateWidth(line, m.width))
+		out[i] = line
 	}
-	return strings.Join(padded, "\n")
+	return strings.Join(out, "\n")
 }
 
 func truncateWidth(s string, w int) string {

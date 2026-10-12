@@ -100,19 +100,15 @@ func formatLogLine(line string, showTS bool) string {
 }
 
 func (m model) logsVisibleLines() int {
-	visible := m.contentHeight() - 1
-	if visible < 1 {
-		return 1
-	}
-	return visible
+	return m.detailVisibleLines()
 }
 
 func (m model) logsMaxHOffset() int {
-	return clampScroll(1<<30, maxDisplayWidth(m.formattedLogLines()), m.width)
+	return clampScroll(1<<30, maxDisplayWidth(m.formattedLogLines()), m.logContentWidth())
 }
 
 func (m model) clampLogHOffset() int {
-	return clampScroll(m.logHOffset, maxDisplayWidth(m.formattedLogLines()), m.width)
+	return clampScroll(m.logHOffset, maxDisplayWidth(m.formattedLogLines()), m.logContentWidth())
 }
 
 func (m model) formattedLogLines() []string {

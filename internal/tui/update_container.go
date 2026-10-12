@@ -54,14 +54,12 @@ func (m model) startContainerUpdate(id string) (model, tea.Cmd) {
 
 func (m model) finishContainerUpdate(msg updateDoneMsg) (model, tea.Cmd) {
 	delete(m.updating, msg.id)
-	m.errMsg = ""
-	m.statusMsg = ""
 
 	var cmds []tea.Cmd
 	if msg.err != nil {
-		m.errMsg = msg.err.Error()
+		cmds = append(cmds, m.pushNotice("", msg.err.Error()))
 	} else {
-		m.statusMsg = "updated"
+		cmds = append(cmds, m.pushNotice("updated", ""))
 		if msg.result.PreviousImage != nil {
 			img := msg.result.PreviousImage
 			m.confirm = &confirmDialog{

@@ -31,28 +31,24 @@ func (m model) render() string {
 
 	header := m.renderHeader(w, title)
 
-	var bodyLines []string
+	var body string
 	switch {
 	case m.helpOpen:
-		body := styleHelp.Render(helpText())
-		bodyLines = strings.Split(m.fillHeight(body, bodyHeight), "\n")
+		body = m.renderPanel(bodyHeight, helpText())
 	case m.confirm != nil:
-		bodyLines = strings.Split(
-			m.fillHeight(styleWarn.Render(fmt.Sprintf("Confirm: %s [y/N]", m.confirm.message)), bodyHeight),
-			"\n",
-		)
+		body = m.renderPanel(bodyHeight, styleWarn.Render(fmt.Sprintf("  Confirm: %s  [y/N]", m.confirm.message)))
 	case m.editMode == editNewStackName:
-		bodyLines = strings.Split(m.fillHeight(m.nameInput.View(), bodyHeight), "\n")
+		body = m.renderPanel(bodyHeight, "  "+m.nameInput.View())
 	case m.editMode == editCompose:
-		bodyLines = strings.Split(m.renderComposeEditor(bodyHeight), "\n")
+		body = m.renderPanel(bodyHeight, m.composeEditorBody())
 	case m.view == viewLogs:
-		bodyLines = strings.Split(m.renderLogs(bodyHeight), "\n")
+		body = m.renderLogs(bodyHeight)
 	case m.view == viewInspect:
-		bodyLines = strings.Split(m.renderInspect(bodyHeight), "\n")
+		body = m.renderInspect(bodyHeight)
 	default:
-		panel := strings.TrimRight(m.renderTablePanel(bodyHeight), "\n")
-		bodyLines = strings.Split(panel, "\n")
+		body = m.renderTablePanel(bodyHeight)
 	}
+	bodyLines := strings.Split(strings.TrimRight(body, "\n"), "\n")
 
 	var footer string
 	if m.commandMode {
@@ -104,18 +100,14 @@ func viewTitle(m model) string {
 	}
 }
 
-func (m model) renderComposeEditor(bodyHeight int) string {
-	var b strings.Builder
+func (m model) composeEditorBody() string {
 	hint := "ctrl+s save  esc back"
 	if m.stackNew {
 		hint += "  (new stack)"
 	} else if !m.stackEditable {
 		hint = "read-only  esc back"
 	}
-	b.WriteString(styleMuted.Render("  " + hint))
-	b.WriteString("\n")
-	b.WriteString(m.composeTA.View())
-	return m.fillHeight(b.String(), bodyHeight)
+	return styleMuted.Render("  "+hint) + "\n" + m.composeTA.View()
 }
 
 func (m model) renderTablePanel(outerH int) string {
@@ -195,6 +187,7 @@ func (m model) renderTablePanel(outerH int) string {
 }
 
 func (m model) renderLogs(bodyHeight int) string {
+	innerW, _ := m.panelBox(bodyHeight)
 	lines := scrollableLines(m, m.logLines)
 	visible := m.logsVisibleLines()
 	offset := clampScroll(m.logViewport, len(lines), visible)
@@ -212,25 +205,19 @@ func (m model) renderLogs(bodyHeight int) string {
 	}
 	b.WriteString("\n")
 
-	if len(lines) == 0 {
-		return m.fillHeight(b.String(), bodyHeight)
-	}
-
 	start := offset
 	for i := start; i < len(lines) && i-start < visible; i++ {
-		b.WriteString(sliceWidth(formatLogLine(lines[i], m.logShowTS), hOffset, m.width))
+		b.WriteString(sliceWidth(formatLogLine(lines[i], m.logShowTS), hOffset, innerW))
 		b.WriteString("\n")
 	}
 
-	return m.fillHeight(b.String(), bodyHeight)
+	return m.renderPanel(bodyHeight, b.String())
 }
 
 func (m model) renderInspect(bodyHeight int) string {
+	innerW, _ := m.panelBox(bodyHeight)
 	lines := strings.Split(m.inspectText, "\n")
-	visible := bodyHeight - 1
-	if visible < 1 {
-		visible = 1
-	}
+	visible := m.detailVisibleLines()
 	offset := clampScroll(m.logViewport, len(lines), visible)
 
 	var b strings.Builder
@@ -239,11 +226,11 @@ func (m model) renderInspect(bodyHeight int) string {
 
 	start := offset
 	for i := start; i < len(lines) && i-start < visible; i++ {
-		b.WriteString(truncateWidth(lines[i], m.width))
+		b.WriteString(truncateWidth(lines[i], innerW))
 		b.WriteString("\n")
 	}
 
-	return m.fillHeight(b.String(), bodyHeight)
+	return m.renderPanel(bodyHeight, b.String())
 }
 
 func statusBar(m model) string {
