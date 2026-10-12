@@ -14,7 +14,9 @@ install|upgrade)
 		cp -a "$CONFIG" "$KEEP"
 	fi
 	if [ -f "$CONFFILES" ] && grep -qx "$CONFIG" "$CONFFILES"; then
-		grep -vx "$CONFIG" "$CONFFILES" > "$CONFFILES.tmp"
+		# grep exits 1 when nothing is left. That is the normal case: this
+		# config was the package's only conffile. Exit 2 is a real error.
+		grep -vx "$CONFIG" "$CONFFILES" > "$CONFFILES.tmp" || [ $? -eq 1 ]
 		mv "$CONFFILES.tmp" "$CONFFILES"
 	fi
 	;;
