@@ -4,10 +4,17 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/charmbracelet/lipgloss"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 )
 
-func (m model) View() string {
+func (m model) View() tea.View {
+	view := tea.NewView(m.render())
+	view.AltScreen = true
+	return view
+}
+
+func (m model) render() string {
 	if m.width == 0 {
 		return "Loading..."
 	}

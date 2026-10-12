@@ -4,9 +4,9 @@ import (
 	"context"
 	"strings"
 
+	tea "charm.land/bubbletea/v2"
 	"github.com/jdbnet/dockyard/internal/docker"
 	"github.com/jdbnet/dockyard/internal/engine"
-	tea "github.com/charmbracelet/bubbletea"
 )
 
 type logFollowMsg struct {

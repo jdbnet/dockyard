@@ -15,10 +15,10 @@ func TestFormatLogLine(t *testing.T) {
 
 func TestLogsMaxScrollAtBottom(t *testing.T) {
 	m := model{
-		view:        viewLogs,
-		height:      24,
-		width:       80,
-		logLines:    []string{"a", "b", "c", "d", "e"},
+		view:          viewLogs,
+		height:        24,
+		width:         80,
+		logLines:      []string{"a", "b", "c", "d", "e"},
 		logAutoScroll: true,
 	}
 	m.logViewport = m.logsMaxScroll()

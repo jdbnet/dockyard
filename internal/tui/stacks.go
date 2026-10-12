@@ -4,11 +4,11 @@ import (
 	"context"
 	"fmt"
 
+	"charm.land/bubbles/v2/textarea"
+	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
 	"github.com/jdbnet/dockyard/internal/compose"
 	"github.com/jdbnet/dockyard/internal/engine"
-	"github.com/charmbracelet/bubbles/textarea"
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
 )
 
 type editMode int
@@ -39,7 +39,7 @@ func buildStackRows(stacks []engine.Stack) []rowItem {
 			src += "·edit"
 		}
 		rows = append(rows, rowItem{
-			id:   s.Name,
+			id:    s.Name,
 			stack: s,
 			cols: []string{
 				s.Name,
@@ -63,7 +63,7 @@ func (m *model) initNameInput() textinput.Model {
 	ti := textinput.New()
 	ti.Placeholder = "stack-name"
 	ti.CharLimit = 64
-	ti.Width = 40
+	ti.SetWidth(40)
 	ti.Prompt = "name: "
 	return ti
 }

@@ -5,9 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/textarea"
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/jdbnet/dockyard/internal/engine"
 )
 
@@ -25,7 +23,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.logHOffset = m.clampLogHOffset()
 		return m, nil
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		if m.helpOpen {
 			if msg.String() == "?" || msg.String() == "q" || msg.String() == "esc" {
 				m.helpOpen = false
@@ -154,12 +152,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.stackEditable = msg.editable
 		m.composeTA = m.initComposeEditor(m.width, m.height)
 		m.composeTA.SetValue(msg.content)
-		m.composeTA.Focus()
 		m.editMode = editCompose
 		if !msg.editable {
 			m.statusMsg = "read-only stack"
 		}
-		return m, textarea.Blink
+		return m, m.composeTA.Focus()
 
 	case composeSavedMsg:
 		name := msg.name
@@ -182,7 +179,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m model) updateConfirm(msg tea.KeyMsg) (model, tea.Cmd) {
+func (m model) updateConfirm(msg tea.KeyPressMsg) (model, tea.Cmd) {
 	switch msg.String() {
 	case "y", "Y":
 		cmd := m.confirm.action()
@@ -195,7 +192,7 @@ func (m model) updateConfirm(msg tea.KeyMsg) (model, tea.Cmd) {
 	return m, nil
 }
 
-func (m model) updateNewStackName(msg tea.KeyMsg) (model, tea.Cmd) {
+func (m model) updateNewStackName(msg tea.KeyPressMsg) (model, tea.Cmd) {
 	switch msg.String() {
 	case "esc":
 		m.editMode = editNone
@@ -212,9 +209,8 @@ func (m model) updateNewStackName(msg tea.KeyMsg) (model, tea.Cmd) {
 		m.stackEditable = true
 		m.composeTA = m.initComposeEditor(m.width, m.height)
 		m.composeTA.SetValue(newStackTemplate())
-		m.composeTA.Focus()
 		m.editMode = editCompose
-		return m, textarea.Blink
+		return m, m.composeTA.Focus()
 	default:
 		var cmd tea.Cmd
 		m.nameInput, cmd = m.nameInput.Update(msg)
@@ -222,7 +218,7 @@ func (m model) updateNewStackName(msg tea.KeyMsg) (model, tea.Cmd) {
 	}
 }
 
-func (m model) updateComposeEditor(msg tea.KeyMsg) (model, tea.Cmd) {
+func (m model) updateComposeEditor(msg tea.KeyPressMsg) (model, tea.Cmd) {
 	switch msg.String() {
 	case "esc":
 		return m.backToStacks()
@@ -262,7 +258,7 @@ type composeSavedMsg struct {
 	isNew bool
 }
 
-func (m model) updateContainers(msg tea.KeyMsg) (model, tea.Cmd) {
+func (m model) updateContainers(msg tea.KeyPressMsg) (model, tea.Cmd) {
 	switch msg.String() {
 	case "ctrl+c":
 		return m, tea.Quit
@@ -331,7 +327,7 @@ type scanUpdatesDoneMsg struct {
 	err error
 }
 
-func (m model) updateUpdates(msg tea.KeyMsg) (model, tea.Cmd) {
+func (m model) updateUpdates(msg tea.KeyPressMsg) (model, tea.Cmd) {
 	switch msg.String() {
 	case "ctrl+c", "q":
 		return m, tea.Quit
@@ -363,7 +359,7 @@ func (m model) updateUpdates(msg tea.KeyMsg) (model, tea.Cmd) {
 	return m, nil
 }
 
-func (m model) updateImages(msg tea.KeyMsg) (model, tea.Cmd) {
+func (m model) updateImages(msg tea.KeyPressMsg) (model, tea.Cmd) {
 	switch msg.String() {
 	case "ctrl+c", "q":
 		return m, tea.Quit
@@ -424,7 +420,7 @@ func (m model) updateImages(msg tea.KeyMsg) (model, tea.Cmd) {
 	return m, nil
 }
 
-func (m model) updateStacks(msg tea.KeyMsg) (model, tea.Cmd) {
+func (m model) updateStacks(msg tea.KeyPressMsg) (model, tea.Cmd) {
 	switch msg.String() {
 	case "ctrl+c":
 		return m, tea.Quit
@@ -449,8 +445,7 @@ func (m model) updateStacks(msg tea.KeyMsg) (model, tea.Cmd) {
 	case "n":
 		m.editMode = editNewStackName
 		m.nameInput = m.initNameInput()
-		m.nameInput.Focus()
-		return m, textinput.Blink
+		return m, m.nameInput.Focus()
 	case "enter", "e":
 		sel := m.selected()
 		if sel == nil || sel.id == "" {
@@ -492,7 +487,7 @@ func (m model) updateStacks(msg tea.KeyMsg) (model, tea.Cmd) {
 	return m, nil
 }
 
-func (m model) handleCommonKeys(msg tea.KeyMsg) (model, tea.Cmd) {
+func (m model) handleCommonKeys(msg tea.KeyPressMsg) (model, tea.Cmd) {
 	switch msg.String() {
 	case ":":
 		m.commandMode = true
@@ -504,7 +499,7 @@ func (m model) handleCommonKeys(msg tea.KeyMsg) (model, tea.Cmd) {
 	return m, nil
 }
 
-func (m model) updateCommand(msg tea.KeyMsg) (model, tea.Cmd) {
+func (m model) updateCommand(msg tea.KeyPressMsg) (model, tea.Cmd) {
 	switch msg.String() {
 	case "esc":
 		m.commandMode = false
@@ -555,18 +550,19 @@ func (m model) updateCommand(msg tea.KeyMsg) (model, tea.Cmd) {
 		m.statusMsg = "unknown command: " + cmd
 		return m, nil
 	default:
-		if msg.Type == tea.KeyBackspace {
+		key := msg.Key()
+		if key.Code == tea.KeyBackspace {
 			if len(m.commandInput) > 0 {
 				m.commandInput = m.commandInput[:len(m.commandInput)-1]
 			}
-		} else if len(msg.Runes) > 0 {
-			m.commandInput += string(msg.Runes)
+		} else if key.Text != "" {
+			m.commandInput += key.Text
 		}
 	}
 	return m, nil
 }
 
-func (m model) updateFilter(msg tea.KeyMsg) (model, tea.Cmd) {
+func (m model) updateFilter(msg tea.KeyPressMsg) (model, tea.Cmd) {
 	switch msg.String() {
 	case "esc":
 		m.filterActive = false
@@ -575,12 +571,13 @@ func (m model) updateFilter(msg tea.KeyMsg) (model, tea.Cmd) {
 	case "enter":
 		m.filterActive = false
 	default:
-		if msg.Type == tea.KeyBackspace {
+		key := msg.Key()
+		if key.Code == tea.KeyBackspace {
 			if len(m.filter) > 0 {
 				m.filter = m.filter[:len(m.filter)-1]
 			}
-		} else if len(msg.Runes) > 0 {
-			m.filter += string(msg.Runes)
+		} else if key.Text != "" {
+			m.filter += key.Text
 		}
 		m.cursor = 0
 	}
@@ -590,7 +587,7 @@ func (m model) updateFilter(msg tea.KeyMsg) (model, tea.Cmd) {
 	return m, nil
 }
 
-func (m model) updateLogs(msg tea.KeyMsg) (model, tea.Cmd) {
+func (m model) updateLogs(msg tea.KeyPressMsg) (model, tea.Cmd) {
 	lines := scrollableLines(m, m.logLines)
 	page := m.scrollPageSize()
 	visible := m.logsVisibleLines()
@@ -610,7 +607,7 @@ func (m model) updateLogs(msg tea.KeyMsg) (model, tea.Cmd) {
 	case "g":
 		m.logViewport = 0
 		m.logAutoScroll = false
-	case "G":
+	case "G", "shift+g":
 		m.logAutoScroll = true
 		m = m.scrollLogsToBottom()
 	case "h", "left":
@@ -631,7 +628,7 @@ func (m model) updateLogs(msg tea.KeyMsg) (model, tea.Cmd) {
 		if !m.logsAtBottom() {
 			m.logAutoScroll = false
 		}
-	case "pgdown", "f", " ":
+	case "pgdown", "f", " ", "space":
 		m.logViewport = clampScroll(m.logViewport+page, len(lines), visible)
 		if !m.logsAtBottom() {
 			m.logAutoScroll = false
@@ -647,7 +644,7 @@ func (m model) updateLogs(msg tea.KeyMsg) (model, tea.Cmd) {
 	return m, nil
 }
 
-func (m model) updateInspect(msg tea.KeyMsg) (model, tea.Cmd) {
+func (m model) updateInspect(msg tea.KeyPressMsg) (model, tea.Cmd) {
 	lines := strings.Split(m.inspectText, "\n")
 	page := m.scrollPageSize()
 	visible := m.contentHeight() - 1
@@ -661,7 +658,7 @@ func (m model) updateInspect(msg tea.KeyMsg) (model, tea.Cmd) {
 		m.logViewport = clampScroll(m.logViewport+1, len(lines), visible)
 	case "k", "up":
 		m.logViewport = clampScroll(m.logViewport-1, len(lines), visible)
-	case "pgdown", "f", " ":
+	case "pgdown", "f", " ", "space":
 		m.logViewport = clampScroll(m.logViewport+page, len(lines), visible)
 	case "pgup", "b":
 		m.logViewport = clampScroll(m.logViewport-page, len(lines), visible)

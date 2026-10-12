@@ -1,6 +1,6 @@
 package tui
 
-import "github.com/charmbracelet/lipgloss"
+import "charm.land/lipgloss/v2"
 
 // 256-color foreground palette; backgrounds use the terminal default.
 var (
@@ -27,11 +27,11 @@ var (
 	styleAccent      = lipgloss.NewStyle().Foreground(colorPrimary)
 	styleSelected    = lipgloss.NewStyle().Foreground(colorPrimary).Bold(true)
 	styleMuted       = lipgloss.NewStyle().Foreground(colorMuted)
-	styleHelp = lipgloss.NewStyle().
-			Border(lipgloss.NormalBorder()).
-			BorderForeground(colorBorder).
-			Padding(1, 2)
-	styleWarn = lipgloss.NewStyle().Foreground(colorWarn)
+	styleHelp        = lipgloss.NewStyle().
+				Border(lipgloss.NormalBorder()).
+				BorderForeground(colorBorder).
+				Padding(1, 2)
+	styleWarn       = lipgloss.NewStyle().Foreground(colorWarn)
 	styleTablePanel = lipgloss.NewStyle().
 			Border(lipgloss.NormalBorder()).
 			BorderForeground(colorBorder).

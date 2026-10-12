@@ -7,9 +7,9 @@ import (
 	"os/signal"
 	"syscall"
 
+	tea "charm.land/bubbletea/v2"
 	"github.com/jdbnet/dockyard/internal/docker"
 	"github.com/jdbnet/dockyard/internal/engine"
-	tea "github.com/charmbracelet/bubbletea"
 )
 
 type shellExec struct {

@@ -4,9 +4,13 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 )
+
+func clearScreen() tea.Cmd {
+	return func() tea.Msg { return tea.ClearScreen() }
+}
 
 func (m model) backToList() (model, tea.Cmd) {
 	prev := m.view
@@ -22,7 +26,7 @@ func (m model) backToList() (model, tea.Cmd) {
 	m.filterActive = false
 	m.editMode = editNone
 	if prev == viewLogs || prev == viewInspect {
-		return m, tea.Batch(refreshRowsCmd(m.eng, viewContainers), tea.ClearScreen)
+		return m, tea.Batch(refreshRowsCmd(m.eng, viewContainers), clearScreen())
 	}
 	return m, refreshRowsCmd(m.eng, viewContainers)
 }
@@ -31,7 +35,7 @@ func (m model) backToStacks() (model, tea.Cmd) {
 	m.editMode = editNone
 	m.view = viewStacks
 	m.cursor = 0
-	return m, tea.Batch(refreshRowsCmd(m.eng, viewStacks), tea.ClearScreen)
+	return m, tea.Batch(refreshRowsCmd(m.eng, viewStacks), clearScreen())
 }
 
 func scrollableLines(m model, raw []string) []string {
