@@ -275,7 +275,7 @@ watch(() => store.lastEvent, (ev) => {
       <div class="card">
         <div class="mb-2 flex items-center justify-between text-xs font-medium uppercase tracking-wide text-muted">
           Combined memory
-          <MemoryStick class="h-4 w-4 text-stat-secondary" />
+          <MemoryStick class="h-4 w-4 text-accent" />
         </div>
         <div class="text-2xl font-semibold tracking-tight">{{ fmtSize(memNow) }}</div>
         <p class="mt-1 text-xs text-muted">RAM in use across {{ running.length }} running container{{ running.length === 1 ? '' : 's' }}</p>
@@ -291,7 +291,7 @@ watch(() => store.lastEvent, (ev) => {
             <div class="text-xs text-muted">In</div>
           </div>
           <div>
-            <div class="flex items-center gap-1 text-lg font-semibold"><ArrowUp class="h-3.5 w-3.5 text-stat-secondary" />{{ fmtRate(txNow) }}</div>
+            <div class="flex items-center gap-1 text-lg font-semibold"><ArrowUp class="h-3.5 w-3.5 text-accent" />{{ fmtRate(txNow) }}</div>
             <div class="text-xs text-muted">Out</div>
           </div>
         </div>
@@ -317,7 +317,7 @@ watch(() => store.lastEvent, (ev) => {
       </div>
       <div class="card xl:col-span-1">
         <h2 class="mb-3 text-sm font-medium text-heading">Memory over time</h2>
-        <AreaChart :series="[{ values: memHistory, color: '#38bdf8', fill: true }]" :height="96" />
+        <AreaChart :series="[{ values: memHistory, color: '#1ebe8a', fill: true }]" :height="96" />
         <p class="mt-2 text-xs text-muted">Combined RAM of running containers</p>
       </div>
       <div class="card xl:col-span-1">
@@ -325,11 +325,11 @@ watch(() => store.lastEvent, (ev) => {
         <AreaChart
           :series="[
             { values: netHistory.rx, color: '#1ebe8a', fill: true },
-            { values: netHistory.tx, color: '#38bdf8', fill: false },
+            { values: netHistory.tx, color: '#1ebe8a', fill: false },
           ]"
           :height="96"
         />
-        <p class="mt-2 text-xs text-muted"><span class="text-accent">In</span> and <span class="text-stat-secondary">out</span></p>
+        <p class="mt-2 text-xs text-muted">In and out</p>
       </div>
     </div>
 
@@ -345,7 +345,7 @@ watch(() => store.lastEvent, (ev) => {
             @click="openContainer(c)"
           >
             <div class="mb-1 flex items-center justify-between gap-3 text-sm">
-              <span class="truncate font-medium text-accent">{{ c.name }}</span>
+              <span class="truncate font-medium">{{ c.name }}</span>
               <span class="inline-flex shrink-0 items-center gap-2 text-muted">
                 <Sparkline v-if="c.sparkline?.length" :points="c.sparkline" field="cpu_pct" />
                 {{ fmtPct(c.cpu_pct) }}
@@ -370,14 +370,14 @@ watch(() => store.lastEvent, (ev) => {
             @click="openContainer(c)"
           >
             <div class="mb-1 flex items-center justify-between gap-3 text-sm">
-              <span class="truncate font-medium text-accent">{{ c.name }}</span>
+              <span class="truncate font-medium">{{ c.name }}</span>
               <span class="inline-flex shrink-0 items-center gap-2 text-muted">
                 <Sparkline v-if="c.sparkline?.length" :points="c.sparkline" field="mem_bytes" />
                 {{ fmtSize(c.mem_bytes || 0) }}
               </span>
             </div>
             <div class="h-1.5 overflow-hidden rounded-full bg-surface-overlay">
-              <div class="h-full rounded-full bg-sky-400" :style="{ width: share(c.mem_bytes, memNow) }" />
+              <div class="h-full rounded-full bg-accent" :style="{ width: share(c.mem_bytes, memNow) }" />
             </div>
           </button>
         </div>
@@ -426,7 +426,7 @@ watch(() => store.lastEvent, (ev) => {
             class="flex w-full items-center justify-between gap-2 text-left text-sm"
             @click="openContainer(c)"
           >
-            <span class="truncate text-accent">{{ c.name }}</span>
+            <span class="truncate">{{ c.name }}</span>
             <span class="badge" :class="c.restart_loop ? 'badge-error' : 'badge-warn'">{{ c.restart_loop ? 'restart loop' : 'unhealthy' }}</span>
           </button>
         </div>
@@ -468,7 +468,7 @@ watch(() => store.lastEvent, (ev) => {
         <h2 class="mb-3 flex items-center gap-2 text-sm font-medium text-heading">
           <Layers class="h-4 w-4 text-muted" /> Projects
         </h2>
-        <div v-if="projectRows.length" class="space-y-3">
+        <div v-if="projectRows.length" class="max-h-80 space-y-3 overflow-y-auto pr-1">
           <div v-for="p in projectRows" :key="p.name">
             <div class="mb-1 flex items-center justify-between gap-3 text-sm">
               <span class="truncate">{{ p.name }}</span>
@@ -494,7 +494,7 @@ watch(() => store.lastEvent, (ev) => {
             class="flex w-full items-center justify-between gap-3 text-left text-sm"
             @click="openContainer(c)"
           >
-            <span class="truncate font-medium text-accent">{{ c.name }}</span>
+            <span class="truncate font-medium">{{ c.name }}</span>
             <span class="shrink-0 text-xs text-muted">↓ {{ fmtRate(c.rx) }} · ↑ {{ fmtRate(c.tx) }}</span>
           </button>
         </div>
@@ -550,7 +550,7 @@ watch(() => store.lastEvent, (ev) => {
             class="flex w-full items-center justify-between gap-3 text-left text-sm"
             @click="openContainer(c)"
           >
-            <span class="truncate text-accent">{{ c.name }}</span>
+            <span class="truncate">{{ c.name }}</span>
             <span class="shrink-0 text-muted">{{ c.uptime || '-' }}</span>
           </button>
         </div>
@@ -568,13 +568,13 @@ watch(() => store.lastEvent, (ev) => {
             @click="openContainer(c)"
           >
             <div class="mb-1 flex items-center justify-between gap-3 text-sm">
-              <span class="truncate text-accent">{{ c.name }}</span>
+              <span class="truncate">{{ c.name }}</span>
               <span class="text-muted">{{ fmtPct(c.mem_pct) }}</span>
             </div>
             <div class="h-1.5 overflow-hidden rounded-full bg-surface-overlay">
               <div
                 class="h-full rounded-full"
-                :class="c.mem_pct >= 80 ? 'bg-amber-400' : 'bg-sky-400'"
+                :class="c.mem_pct >= 80 ? 'bg-amber-400' : 'bg-accent'"
                 :style="{ width: `${Math.min(100, num(c.mem_pct))}%` }"
               />
             </div>
@@ -594,7 +594,7 @@ watch(() => store.lastEvent, (ev) => {
           class="flex items-center justify-between gap-3 text-left text-sm"
           @click="openContainer(c)"
         >
-          <span class="truncate text-accent">{{ c.name }}</span>
+          <span class="truncate">{{ c.name }}</span>
           <span class="text-muted">{{ c.restart_count }}</span>
         </button>
       </div>
