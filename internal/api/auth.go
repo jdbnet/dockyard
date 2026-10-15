@@ -31,6 +31,15 @@ func (s *Server) validSession(r *http.Request) bool {
 
 func (s *Server) authMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasPrefix(r.URL.Path, "/api/v1/external/") {
+			if r.URL.Path == "/api/v1/external/openapi.yaml" {
+				next.ServeHTTP(w, r)
+				return
+			}
+			s.serveExternal(w, r, next)
+			return
+		}
+
 		if !s.authEnabled() || s.isPublicPath(r.URL.Path) {
 			next.ServeHTTP(w, r)
 			return
@@ -109,4 +118,40 @@ func (s *Server) handleAuthLogout(w http.ResponseWriter, r *http.Request) {
 		Expires:  time.Now().Add(-1 * time.Hour),
 	})
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+func bearerToken(r *http.Request) (string, bool) {
+	const prefix = "Bearer "
+	header := r.Header.Get("Authorization")
+	if !strings.HasPrefix(header, prefix) {
+		return "", false
+	}
+	token := strings.TrimSpace(header[len(prefix):])
+	if token == "" {
+		return "", false
+	}
+	return token, true
+}
+
+func (s *Server) serveExternal(w http.ResponseWriter, r *http.Request, next http.Handler) {
+	raw, ok := bearerToken(r)
+	if !ok {
+		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
+		return
+	}
+	key, ok := s.lookupAPIKey(raw)
+	if !ok {
+		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
+		return
+	}
+	if !externalWrite(key.Scope, r.Method) {
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden"})
+		return
+	}
+	if !s.allowExternal(key.ID) {
+		writeJSON(w, http.StatusTooManyRequests, map[string]string{"error": "rate limit exceeded"})
+		return
+	}
+	s.touchAPIKey(key.ID)
+	next.ServeHTTP(w, r)
 }

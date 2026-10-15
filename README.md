@@ -90,6 +90,8 @@ auth:
 
 Leave `username` blank to disable auth (default for local-only use). Set both username and password to enable login.
 
+Other apps should use an API key instead of this login. Create one under Settings → API keys. See [docs/api.md](docs/api.md).
+
 ### Logging
 
 Dockyard can follow container logs and push them to [GoLogs](https://github.com/jdbnet/gologs) or Grafana Loki. Both accept the same JSON body on `POST /loki/api/v1/push`. The shipper runs inside the Dockyard process. Settings are stored in `config.yaml` next to the other options. Passwords and tokens are kept in that file, like `auth.password`, and the web UI masks them after they are saved.

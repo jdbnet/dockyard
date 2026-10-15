@@ -1,0 +1,172 @@
+openapi: 3.0.3
+info:
+  title: Dockyard external API
+  version: "1"
+  description: |
+    Read stats and container info, and optionally start, stop, or restart containers.
+    Authenticate with an API key created in Settings. Send it as `Authorization: Bearer <key>`.
+    The key is shown once. `read` is the default scope. `write` includes `read`.
+servers:
+  - url: /api/v1/external
+security:
+  - bearerAuth: []
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+    Container:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        image: { type: string }
+        state: { type: string }
+        status: { type: string }
+        uptime: { type: string }
+        ports:
+          type: array
+          items: { type: string }
+        cpu_pct: { type: number }
+        mem_bytes: { type: integer }
+        mem_pct: { type: number }
+    Stats:
+      type: object
+      properties:
+        containers: { type: integer }
+        running: { type: integer }
+        cpu_pct: { type: number }
+        mem_bytes: { type: integer }
+        net_rx_bps: { type: number }
+        net_tx_bps: { type: number }
+        states:
+          type: object
+          additionalProperties: { type: integer }
+    Action:
+      type: object
+      properties:
+        status: { type: string }
+        id: { type: string }
+paths:
+  /stats:
+    get:
+      summary: Host stats
+      description: Combined CPU, memory, and network rates for running containers, plus counts by state.
+      responses:
+        "200":
+          description: Current snapshot
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Stats" }
+        "401":
+          description: Missing or unknown key
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "429":
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /containers:
+    get:
+      summary: List containers
+      responses:
+        "200":
+          description: Containers
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Container" }
+        "401":
+          description: Missing or unknown key
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /containers/{id}:
+    get:
+      summary: Get one container
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+          description: Full id, short id, or name
+      responses:
+        "200":
+          description: Container
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Container" }
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /containers/{id}/start:
+    post:
+      summary: Start a container
+      description: Requires the write scope.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Started
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Action" }
+        "403":
+          description: Key is read-only
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /containers/{id}/stop:
+    post:
+      summary: Stop a container
+      description: Requires the write scope.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Stopped
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Action" }
+        "403":
+          description: Key is read-only
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /containers/{id}/restart:
+    post:
+      summary: Restart a container
+      description: Requires the write scope.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Restarted
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Action" }
+        "403":
+          description: Key is read-only
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }

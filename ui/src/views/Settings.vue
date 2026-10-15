@@ -1,5 +1,6 @@
 <script setup>
 import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { RouterLink } from 'vue-router'
 import { getLoggingSettings, getLoggingStatus, getSettings, saveLoggingSettings, saveSettings, testLoggingSettings } from '@/api/client'
 import { errorMessage } from '@/lib/errors'
 
@@ -217,6 +218,11 @@ const stateLabel = computed(() => {
 
 <template>
   <div class="mx-auto max-w-3xl space-y-4">
+    <div class="flex flex-wrap gap-2 text-sm">
+      <RouterLink to="/settings" class="btn-secondary">General</RouterLink>
+      <RouterLink to="/settings/api-keys" class="btn-secondary">API keys</RouterLink>
+      <RouterLink to="/docs" class="btn-secondary">API docs</RouterLink>
+    </div>
     <section class="card space-y-4">
       <div>
         <h1 class="text-lg font-semibold text-heading">General</h1>

@@ -23,6 +23,14 @@ type Server struct {
 	mux          *http.ServeMux
 	sessionMu    sync.Mutex
 	sessionToken string
+	keysMu       sync.Mutex
+	keyPersisted map[string]time.Time
+	keyWindows   map[string]keyWindow
+}
+
+type keyWindow struct {
+	start time.Time
+	count int
 }
 
 func NewServer(cfg *config.Config, eng *engine.Engine, version string) *Server {
@@ -104,6 +112,17 @@ func (s *Server) registerRoutes() {
 	s.mux.HandleFunc("PUT /api/v1/settings/logging", s.handlePutLogging)
 	s.mux.HandleFunc("POST /api/v1/settings/logging/test", s.handleTestLogging)
 	s.mux.HandleFunc("GET /api/v1/settings/logging/status", s.handleLoggingStatus)
+	s.mux.HandleFunc("GET /api/v1/settings/api-keys", s.handleListAPIKeys)
+	s.mux.HandleFunc("POST /api/v1/settings/api-keys", s.handleCreateAPIKey)
+	s.mux.HandleFunc("DELETE /api/v1/settings/api-keys/{id}", s.handleDeleteAPIKey)
+
+	s.mux.HandleFunc("GET /api/v1/external/openapi.yaml", s.handleOpenAPI)
+	s.mux.HandleFunc("GET /api/v1/external/stats", s.handleExternalStats)
+	s.mux.HandleFunc("GET /api/v1/external/containers", s.handleExternalContainers)
+	s.mux.HandleFunc("GET /api/v1/external/containers/{id}", s.handleExternalContainer)
+	s.mux.HandleFunc("POST /api/v1/external/containers/{id}/start", s.handleExternalStart)
+	s.mux.HandleFunc("POST /api/v1/external/containers/{id}/stop", s.handleExternalStop)
+	s.mux.HandleFunc("POST /api/v1/external/containers/{id}/restart", s.handleExternalRestart)
 
 	s.mux.HandleFunc("GET /ws/events", s.handleWSEvents)
 	s.mux.HandleFunc("GET /ws/stats", s.handleWSStats)

@@ -79,7 +79,7 @@ func (s *Server) handleUpdateContainer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
-		"status":          "ok",
+		"status":         "ok",
 		"previous_image": result.PreviousImage,
 	})
 }

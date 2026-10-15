@@ -131,6 +131,21 @@ export async function testLoggingSettings(body) {
   return data
 }
 
+export async function listAPIKeys() {
+  const { data } = await api.get('/settings/api-keys')
+  return data
+}
+
+export async function createAPIKey(body) {
+  const { data } = await api.post('/settings/api-keys', body)
+  return data
+}
+
+export async function revokeAPIKey(id) {
+  const { data } = await api.delete(`/settings/api-keys/${id}`)
+  return data
+}
+
 export async function getLoggingStatus() {
   const { data } = await api.get('/settings/logging/status')
   return data

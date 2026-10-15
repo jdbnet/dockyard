@@ -25,6 +25,18 @@ type Config struct {
 	TUI         TUIConfig         `yaml:"tui"`
 	Updates     UpdatesConfig     `yaml:"updates"`
 	Logging     LoggingConfig     `yaml:"logging"`
+	APIKeys     []APIKey          `yaml:"api_keys,omitempty"`
+}
+
+// APIKey is a stored external-API credential. The raw key is never written.
+type APIKey struct {
+	ID         string     `yaml:"id" json:"id"`
+	Name       string     `yaml:"name" json:"name"`
+	Prefix     string     `yaml:"prefix" json:"prefix"`
+	Hash       string     `yaml:"sha256" json:"-"`
+	Scope      string     `yaml:"scope" json:"scope"`
+	CreatedAt  time.Time  `yaml:"created_at" json:"created_at"`
+	LastUsedAt *time.Time `yaml:"last_used_at,omitempty" json:"last_used_at,omitempty"`
 }
 
 type DockerConfig struct {
@@ -207,6 +219,15 @@ func applyEnvOverrides(cfg *Config) {
 			cfg.Updates.Interval.Duration = d
 		}
 	}
+}
+
+// SaveAPIKeys rewrites the api_keys list and leaves every other key as it is.
+func (c *Config) SaveAPIKeys() error {
+	keys := c.APIKeys
+	if keys == nil {
+		keys = []APIKey{}
+	}
+	return c.saveKeys(map[string]any{"api_keys": keys})
 }
 
 // SaveLogging rewrites the logging key in the config file and leaves every other key as it is.

@@ -11,6 +11,7 @@ import Networks from '@/views/Networks.vue'
 import Ports from '@/views/Ports.vue'
 import Updates from '@/views/Updates.vue'
 import Settings from '@/views/Settings.vue'
+import ApiKeys from '@/views/ApiKeys.vue'
 import Login from '@/views/Login.vue'
 
 const router = createRouter({
@@ -28,6 +29,8 @@ const router = createRouter({
     { path: '/networks', name: 'networks', component: Networks },
     { path: '/ports', name: 'ports', component: Ports },
     { path: '/settings', name: 'settings', component: Settings },
+    { path: '/settings/api-keys', name: 'api-keys', component: ApiKeys },
+    { path: '/docs', name: 'docs', component: () => import('@/views/Docs.vue'), meta: { public: true } },
   ],
 })
 
