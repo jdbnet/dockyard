@@ -176,7 +176,7 @@ async function loadNotifications() {
   }
 }
 
-const templateHelp = '{{count}} {{scanned_at}} {{summary}} {{summary_oneline}} {{link}} {{names}} {{more}}'
+const templateHelp = '{{count}} {{scanned_at}} {{summary}} {{summary_plain}} {{summary_br}} {{summary_oneline}} {{link}} {{names}} {{more}}'
 
 function addWebhook() {
   notify.value.webhooks.push({
@@ -687,7 +687,11 @@ const stateLabel = computed(() => {
                 <label class="text-sm text-muted">JSON body fields</label>
                 <button type="button" class="btn-secondary text-xs" @click="addCustomField(wh)">Add field</button>
               </div>
-              <p class="text-xs text-muted">Each row becomes one key in the POST body. Values support templates: {{ templateHelp }}</p>
+              <p class="text-xs text-muted">
+                Each row becomes one key in the POST body. Values support templates: {{ templateHelp }}.
+                On custom webhooks, <span v-pre>{{summary}}</span> uses &lt;br&gt; line breaks for HTML dashboards;
+                use <span v-pre>{{summary_plain}}</span> for newline characters in JSON.
+              </p>
               <div v-for="(field, fi) in wh.custom_fields" :key="fi" class="grid gap-2 sm:grid-cols-[1fr_2fr_auto]">
                 <input v-model="field.key" type="text" class="input-field font-mono text-sm" placeholder="key" />
                 <input v-model="field.value" type="text" class="input-field font-mono text-sm" placeholder="value template" />

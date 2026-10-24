@@ -42,6 +42,41 @@ func TestTeamsAdaptiveCardJSON(t *testing.T) {
 	}
 }
 
+func TestSummaryMultilineForDiscord(t *testing.T) {
+	wh := config.WebhookConfig{Type: "discord", MessageTemplate: "{{summary}}"}
+	msg := renderedMessage(wh, "", SampleReport())
+	if !strings.Contains(msg, "\n") {
+		t.Fatalf("expected newlines in summary, got %q", msg)
+	}
+	if strings.Contains(msg, "<br>") {
+		t.Fatal("discord summary should not use br tags")
+	}
+}
+
+func TestCustomSummaryUsesBR(t *testing.T) {
+	wh := config.WebhookConfig{
+		Type: "custom",
+		CustomFields: []config.WebhookField{
+			{Key: "message", Value: "{{summary}}"},
+		},
+	}
+	p, err := buildCustom(wh, "", SampleReport())
+	if err != nil {
+		t.Fatal(err)
+	}
+	// json.Marshal escapes < as \u003c
+	if !strings.Contains(string(p.body), "br") {
+		t.Fatalf("expected br in custom summary, got %s", p.body)
+	}
+	var decoded map[string]string
+	if err := json.Unmarshal(p.body, &decoded); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(decoded["message"], "<br>") {
+		t.Fatalf("expected <br> after decode, got %q", decoded["message"])
+	}
+}
+
 func TestCustomFieldsJSONEscape(t *testing.T) {
 	report := UpdateReport{
 		Pending: []PendingRow{{

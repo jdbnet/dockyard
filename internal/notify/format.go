@@ -36,7 +36,7 @@ func buildCustom(wh config.WebhookConfig, publicURL string, report UpdateReport)
 		if key == "" {
 			continue
 		}
-		body[key] = renderTemplate(publicURL, report, field.Value)
+		body[key] = renderTemplate(publicURL, report, field.Value, true)
 	}
 	if len(body) == 0 {
 		return payload{}, fmt.Errorf("custom webhook requires at least one field with a key")

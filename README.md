@@ -128,9 +128,9 @@ Dockyard scans for newer container images on the `updates.interval` schedule (de
 
 Configure them under **Settings → Update notifications**. You can add multiple webhooks (Discord, Slack, Microsoft Teams Workflows with an Adaptive Card, or custom). Webhook URLs and bearer tokens are stored in `config.yaml` but are not shown again in the API after save.
 
-**Message templates** (Discord, Slack, Teams) use placeholders such as `{{count}}`, `{{summary}}`, `{{names}}`, and `{{link}}`. Leave blank for the default layout. Discord and Teams also support an optional **title template**.
+**Message templates** (Discord, Slack, Teams) use placeholders such as `{{count}}`, `{{summary}}`, `{{names}}`, and `{{link}}`. Leave blank for the default layout. Discord and Teams also support an optional **title template**. `{{summary}}` uses real newline characters between containers.
 
-**Custom** webhooks let you define any JSON keys you need (for example `title`, `message`, and `category` for a homelab dashboard). Each value is a template string; Dockyard builds the JSON body and escapes special characters automatically.
+**Custom** webhooks let you define any JSON keys you need (for example `title`, `message`, and `category` for a homelab dashboard). Each value is a template string; Dockyard builds the JSON body and escapes special characters automatically. For HTML dashboards, `{{summary}}` uses `<br>` between lines; use `{{summary_plain}}` if you need `\n` in the JSON string instead.
 
 **Schedule modes:**
 
