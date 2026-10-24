@@ -178,9 +178,55 @@ async function loadNotifications() {
 
 const templateHelp = '{{count}} {{scanned_at}} {{summary}} {{summary_plain}} {{summary_br}} {{summary_oneline}} {{link}} {{names}} {{more}}'
 
+const webhookTypeLabels = {
+  discord: 'Discord',
+  slack: 'Slack',
+  teams: 'Teams',
+  custom: 'Custom',
+}
+
+const expandedWebhooks = ref({})
+
+function webhookKey(wh, index) {
+  return wh.id || wh._clientId || `index-${index}`
+}
+
+function webhookSummaryTitle(wh) {
+  const name = (wh.name || '').trim()
+  if (name) return name
+  return webhookTypeLabels[wh.type] || 'Webhook'
+}
+
+function webhookSummaryMeta(wh) {
+  const parts = []
+  if ((wh.name || '').trim()) {
+    parts.push(webhookTypeLabels[wh.type] || wh.type)
+  }
+  if (!wh.enabled) parts.push('disabled')
+  if (wh.url_set && !wh.url) parts.push('URL saved')
+  else if (!wh.url_set && !wh.url) parts.push('No URL yet')
+  return parts.join(' · ')
+}
+
+function isWebhookExpanded(wh, index) {
+  return !!expandedWebhooks.value[webhookKey(wh, index)]
+}
+
+function toggleWebhookExpanded(wh, index) {
+  const key = webhookKey(wh, index)
+  expandedWebhooks.value = { ...expandedWebhooks.value, [key]: !expandedWebhooks.value[key] }
+}
+
+function webhookErrorFor(wh) {
+  if (!wh.id) return ''
+  return notifyStatus.value.webhook_errors?.[wh.id] || ''
+}
+
 function addWebhook() {
+  const clientId = `wh-${typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Date.now()}`
   notify.value.webhooks.push({
     id: '',
+    _clientId: clientId,
     name: '',
     type: 'discord',
     url: '',
@@ -194,6 +240,7 @@ function addWebhook() {
     title_template: '',
     custom_fields: [],
   })
+  expandedWebhooks.value = { ...expandedWebhooks.value, [clientId]: true }
 }
 
 function addCustomField(wh) {
@@ -649,7 +696,29 @@ const stateLabel = computed(() => {
           <button type="button" class="btn-secondary" @click="addWebhook">Add webhook</button>
         </div>
         <p v-if="!notify.webhooks.length" class="text-sm text-muted">No webhooks configured.</p>
-        <div v-for="(wh, index) in notify.webhooks" :key="wh.id || index" class="rounded-lg border border-default p-4 space-y-3">
+        <div v-for="(wh, index) in notify.webhooks" :key="webhookKey(wh, index)" class="rounded-lg border border-default overflow-hidden">
+          <button
+            type="button"
+            class="flex w-full items-center gap-3 p-4 text-left transition-colors hover:bg-surface-overlay"
+            :aria-expanded="isWebhookExpanded(wh, index)"
+            @click="toggleWebhookExpanded(wh, index)"
+          >
+            <svg
+              class="h-4 w-4 shrink-0 text-muted transition-transform"
+              :class="isWebhookExpanded(wh, index) ? 'rotate-90' : ''"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+              aria-hidden="true"
+            >
+              <path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd" />
+            </svg>
+            <div class="min-w-0 flex-1">
+              <div class="font-medium text-heading truncate">{{ webhookSummaryTitle(wh) }}</div>
+              <div class="text-xs text-muted truncate">{{ webhookSummaryMeta(wh) }}</div>
+            </div>
+            <span v-if="webhookErrorFor(wh)" class="shrink-0 text-xs text-danger" title="Last delivery error">Error</span>
+          </button>
+          <div v-show="isWebhookExpanded(wh, index)" class="space-y-3 border-t border-default p-4">
           <div class="grid gap-3 sm:grid-cols-2">
             <div>
               <label class="mb-1 block text-sm text-muted">Name</label>
@@ -728,6 +797,7 @@ const stateLabel = computed(() => {
               {{ notifyTesting === (wh.id || wh.name) ? 'Testing…' : 'Test' }}
             </button>
             <button type="button" class="btn-ghost" @click="removeWebhook(index)">Remove</button>
+          </div>
           </div>
         </div>
       </div>
