@@ -15,6 +15,7 @@ import (
 	"github.com/jdbnet/dockyard/internal/config"
 	"github.com/jdbnet/dockyard/internal/docker"
 	"github.com/jdbnet/dockyard/internal/logging"
+	"github.com/jdbnet/dockyard/internal/notify"
 )
 
 type Engine struct {
@@ -31,6 +32,7 @@ type Engine struct {
 	scanMu   sync.Mutex
 	updates  UpdatesReport
 	shipper  *logging.Shipper
+	notifier *notify.Notifier
 }
 
 type dockerStatsJSON struct {
@@ -79,7 +81,7 @@ func New(cfg *config.Config, dc *docker.Client) (*Engine, error) {
 	if err != nil {
 		return nil, fmt.Errorf("log shipping: %w", err)
 	}
-	return &Engine{
+	e := &Engine{
 		cfg:      cfg,
 		docker:   dc,
 		stacks:   stacks,
@@ -89,7 +91,9 @@ func New(cfg *config.Config, dc *docker.Client) (*Engine, error) {
 		tracker:  newRestartTracker(cfg.RestartLoop.Threshold, cfg.RestartLoop.Window.Duration),
 		subs:     make(map[chan Event]struct{}),
 		shipper:  shipper,
-	}, nil
+	}
+	e.notifier = notify.New(cfg.Notifications, e.notifyReport)
+	return e, nil
 }
 
 func (e *Engine) Run(ctx context.Context) error {
@@ -98,6 +102,9 @@ func (e *Engine) Run(ctx context.Context) error {
 	go e.pollStats(ctx)
 	go e.fallbackRefresh(ctx)
 	go e.pollUpdates(ctx)
+	if e.notifier != nil {
+		e.notifier.RunSchedule(ctx)
+	}
 	if e.shipper != nil {
 		kicks := make(chan struct{}, 1)
 		go e.forwardLogKicks(ctx, kicks)

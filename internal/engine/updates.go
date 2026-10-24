@@ -106,6 +106,9 @@ func (e *Engine) scanUpdates(ctx context.Context) error {
 
 	e.updates = report
 	e.broadcast(Event{Type: "updates", Action: "scan", Timestamp: report.ScannedAt})
+	if e.notifier != nil {
+		e.notifier.MaybeNotifyInstant(ctx, toNotifyReport(report))
+	}
 	return nil
 }
 

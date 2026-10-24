@@ -25,7 +25,42 @@ type Config struct {
 	TUI         TUIConfig         `yaml:"tui"`
 	Updates     UpdatesConfig     `yaml:"updates"`
 	Logging     LoggingConfig     `yaml:"logging"`
-	APIKeys     []APIKey          `yaml:"api_keys,omitempty"`
+	APIKeys       []APIKey            `yaml:"api_keys,omitempty"`
+	Notifications NotificationsConfig `yaml:"notifications"`
+}
+
+// NotificationsConfig drives update webhook delivery.
+type NotificationsConfig struct {
+	Enabled   bool                 `yaml:"enabled"`
+	PublicURL string               `yaml:"public_url"`
+	Schedule  NotifyScheduleConfig `yaml:"schedule"`
+	Webhooks  []WebhookConfig      `yaml:"webhooks,omitempty"`
+}
+
+type NotifyScheduleConfig struct {
+	Mode     string   `yaml:"mode"`
+	Interval Duration `yaml:"interval"`
+	At       string   `yaml:"at"`
+}
+
+// WebhookField is one key in a custom webhook JSON body. The value is a template string.
+type WebhookField struct {
+	Key   string `yaml:"key" json:"key"`
+	Value string `yaml:"value" json:"value"`
+}
+
+type WebhookConfig struct {
+	ID              string         `yaml:"id"`
+	Name            string         `yaml:"name"`
+	Type            string         `yaml:"type"`
+	URL             string         `yaml:"url"`
+	Auth            string         `yaml:"auth"`
+	Username        string         `yaml:"username"`
+	Token           string         `yaml:"token"`
+	Enabled         bool           `yaml:"enabled"`
+	MessageTemplate string         `yaml:"message_template,omitempty"`
+	TitleTemplate   string         `yaml:"title_template,omitempty"`
+	CustomFields    []WebhookField `yaml:"custom_fields,omitempty"`
 }
 
 // APIKey is a stored external-API credential. The raw key is never written.
@@ -228,6 +263,14 @@ func (c *Config) SaveAPIKeys() error {
 		keys = []APIKey{}
 	}
 	return c.saveKeys(map[string]any{"api_keys": keys})
+}
+
+// SaveNotifications rewrites the notifications key and leaves every other key as it is.
+func (c *Config) SaveNotifications(notifications NotificationsConfig) error {
+	if notifications.Webhooks == nil {
+		notifications.Webhooks = []WebhookConfig{}
+	}
+	return c.saveKeys(map[string]any{"notifications": notifications})
 }
 
 // SaveLogging rewrites the logging key in the config file and leaves every other key as it is.

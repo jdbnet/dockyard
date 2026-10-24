@@ -146,6 +146,21 @@ export async function revokeAPIKey(id) {
   return data
 }
 
+export async function getNotificationSettings() {
+  const { data } = await api.get('/settings/notifications')
+  return data
+}
+
+export async function saveNotificationSettings(body) {
+  const { data } = await api.put('/settings/notifications', body)
+  return data
+}
+
+export async function testNotificationSettings(body) {
+  const { data } = await api.post('/settings/notifications/test', body)
+  return data
+}
+
 export async function getLoggingStatus() {
   const { data } = await api.get('/settings/logging/status')
   return data

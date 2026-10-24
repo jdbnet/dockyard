@@ -122,6 +122,34 @@ Collection:
 
 Extra labels on a stream come from Docker labels with the prefix `dockyard.logs.label.`. For example, `dockyard.logs.label.env=prod` becomes the Loki label `env=prod`. Each stream also has `host`, `container`, `image`, `stream` (`stdout` or `stderr`), and, for Compose, `compose_project` and `compose_service`.
 
+### Update notifications
+
+Dockyard scans for newer container images on the `updates.interval` schedule (default 1 hour). **Update notifications** are separate: they send webhooks only when there are pending updates.
+
+Configure them under **Settings → Update notifications**. You can add multiple webhooks (Discord, Slack, Microsoft Teams Workflows with an Adaptive Card, or custom). Webhook URLs and bearer tokens are stored in `config.yaml` but are not shown again in the API after save.
+
+**Message templates** (Discord, Slack, Teams) use placeholders such as `{{count}}`, `{{summary}}`, `{{names}}`, and `{{link}}`. Leave blank for the default layout. Discord and Teams also support an optional **title template**.
+
+**Custom** webhooks let you define any JSON keys you need (for example `title`, `message`, and `category` for a homelab dashboard). Each value is a template string; Dockyard builds the JSON body and escapes special characters automatically.
+
+**Schedule modes:**
+
+- **Instant** — notify when the set of pending updates changes (hash of container id + remote digest).
+- **Interval** — repeat while updates remain (for example every 3h, 6h, or 12h).
+- **Daily** — once per day at a set local time while updates remain.
+
+Optional **public URL** adds an “Open updates” link to formatted messages (`{public_url}/updates`).
+
+Example custom field mapping:
+
+| Key | Value template |
+|-----|----------------|
+| `title` | `{{count}} image updates` |
+| `message` | `{{summary}}` |
+| `category` | `dockyard` |
+
+Use **Test** on a webhook to send a sample payload without waiting for a real update.
+
 ## TUI keybindings
 
 | Key | Action |

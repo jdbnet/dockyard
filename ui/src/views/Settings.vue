@@ -1,7 +1,10 @@
 <script setup>
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
-import { getLoggingSettings, getLoggingStatus, getSettings, saveLoggingSettings, saveSettings, testLoggingSettings } from '@/api/client'
+import {
+  getLoggingSettings, getLoggingStatus, getNotificationSettings, getSettings,
+  saveLoggingSettings, saveNotificationSettings, saveSettings, testLoggingSettings, testNotificationSettings,
+} from '@/api/client'
 import { errorMessage } from '@/lib/errors'
 
 const form = ref({
@@ -48,6 +51,17 @@ const saving = ref(false)
 const testing = ref(false)
 const message = ref('')
 const messageError = ref(false)
+const notify = ref({
+  enabled: false,
+  public_url: '',
+  schedule: { mode: 'instant', interval: '6h', at: '09:00' },
+  webhooks: [],
+})
+const notifyStatus = ref({ last_error: '', webhook_errors: {} })
+const notifySaving = ref(false)
+const notifyTesting = ref('')
+const notifyMessage = ref('')
+const notifyMessageError = ref(false)
 let timer
 
 const showUser = computed(() => form.value.auth === 'basic')
@@ -56,6 +70,7 @@ const showToken = computed(() => form.value.auth === 'bearer')
 onMounted(async () => {
   await loadGeneral()
   await load()
+  await loadNotifications()
   await refreshStatus()
   timer = setInterval(refreshStatus, 3000)
 })
@@ -124,6 +139,145 @@ function setGeneralMessage(text, isError) {
   generalMessage.value = text
   generalError.value = isError
 }
+
+function applyNotifications(data) {
+  notify.value = {
+    enabled: !!data.enabled,
+    public_url: data.public_url || '',
+    schedule: {
+      mode: data.schedule?.mode || 'instant',
+      interval: data.schedule?.interval || '6h',
+      at: data.schedule?.at || '09:00',
+    },
+    webhooks: (data.webhooks || []).map((wh) => ({
+      id: wh.id,
+      name: wh.name,
+      type: wh.type || 'custom',
+      url: '',
+      auth: wh.auth || 'none',
+      username: wh.username || '',
+      token: '',
+      enabled: !!wh.enabled,
+      url_set: !!wh.url_set,
+      token_set: !!wh.token_set,
+      message_template: wh.message_template || '',
+      title_template: wh.title_template || '',
+      custom_fields: (wh.custom_fields || []).map((f) => ({ key: f.key || '', value: f.value || '' })),
+    })),
+  }
+  notifyStatus.value = data.status || { last_error: '', webhook_errors: {} }
+}
+
+async function loadNotifications() {
+  try {
+    applyNotifications(await getNotificationSettings())
+  } catch (err) {
+    setNotifyMessage(errorMessage(err, 'Failed to load notification settings'), true)
+  }
+}
+
+const templateHelp = '{{count}} {{scanned_at}} {{summary}} {{summary_oneline}} {{link}} {{names}} {{more}}'
+
+function addWebhook() {
+  notify.value.webhooks.push({
+    id: '',
+    name: '',
+    type: 'discord',
+    url: '',
+    auth: 'none',
+    username: '',
+    token: '',
+    enabled: true,
+    url_set: false,
+    token_set: false,
+    message_template: '',
+    title_template: '',
+    custom_fields: [],
+  })
+}
+
+function addCustomField(wh) {
+  if (!wh.custom_fields) wh.custom_fields = []
+  wh.custom_fields.push({ key: '', value: '' })
+}
+
+function removeCustomField(wh, index) {
+  wh.custom_fields.splice(index, 1)
+}
+
+function removeWebhook(index) {
+  notify.value.webhooks.splice(index, 1)
+}
+
+function notifyPayload() {
+  return {
+    enabled: notify.value.enabled,
+    public_url: notify.value.public_url,
+    schedule: notify.value.schedule,
+    webhooks: notify.value.webhooks.map((wh) => ({
+      id: wh.id,
+      name: wh.name,
+      type: wh.type,
+      url: wh.url,
+      auth: wh.auth,
+      username: wh.username,
+      token: wh.token,
+      enabled: wh.enabled,
+      message_template: wh.message_template,
+      title_template: wh.title_template,
+      custom_fields: wh.custom_fields || [],
+    })),
+  }
+}
+
+async function saveNotifications() {
+  notifySaving.value = true
+  setNotifyMessage('', false)
+  try {
+    applyNotifications(await saveNotificationSettings(notifyPayload()))
+    setNotifyMessage('Notification settings saved.', false)
+  } catch (err) {
+    setNotifyMessage(errorMessage(err, 'Failed to save notification settings'), true)
+  } finally {
+    notifySaving.value = false
+  }
+}
+
+async function testWebhook(wh) {
+  notifyTesting.value = wh.id || wh.name
+  setNotifyMessage('', false)
+  try {
+    await testNotificationSettings({
+      webhook_id: wh.id,
+      webhook: {
+        id: wh.id,
+        name: wh.name,
+        type: wh.type,
+        url: wh.url,
+        auth: wh.auth,
+        username: wh.username,
+        token: wh.token,
+        enabled: true,
+        message_template: wh.message_template,
+        title_template: wh.title_template,
+        custom_fields: wh.custom_fields || [],
+      },
+    })
+    setNotifyMessage('Test notification sent.', false)
+  } catch (err) {
+    setNotifyMessage(errorMessage(err, 'Test failed'), true)
+  } finally {
+    notifyTesting.value = ''
+  }
+}
+
+function setNotifyMessage(text, isError) {
+  notifyMessage.value = text
+  notifyMessageError.value = isError
+}
+
+const showNotifyUser = (wh) => wh.auth === 'basic'
+const showNotifyToken = (wh) => wh.auth === 'bearer'
 
 async function load() {
   try {
@@ -444,6 +598,152 @@ const stateLabel = computed(() => {
           </li>
         </ul>
       </div>
+    </section>
+
+    <section class="card space-y-4">
+      <div>
+        <h1 class="text-lg font-semibold text-heading">Update notifications</h1>
+        <p class="mt-1 text-sm text-muted">
+          Webhooks when container image updates are found. Scanning still uses the updates interval above; this controls when alerts are sent.
+        </p>
+      </div>
+
+      <label class="flex items-center gap-2 text-sm">
+        <input v-model="notify.enabled" type="checkbox" class="h-4 w-4 accent-[#1ebe8a]" />
+        Enabled
+      </label>
+
+      <div>
+        <label class="mb-1 block text-sm text-muted" for="notify-public-url">Public URL (optional)</label>
+        <input id="notify-public-url" v-model="notify.public_url" type="url" class="input-field" placeholder="https://dockyard.example" />
+        <p class="mt-1 text-xs text-muted">Used for “Open updates” links in Discord, Slack, and Teams messages.</p>
+      </div>
+
+      <div class="grid gap-4 sm:grid-cols-3">
+        <div>
+          <label class="mb-1 block text-sm text-muted" for="notify-mode">Schedule</label>
+          <select id="notify-mode" v-model="notify.schedule.mode" class="input-field">
+            <option value="instant">Instant (when the pending set changes)</option>
+            <option value="interval">Interval</option>
+            <option value="daily">Daily</option>
+          </select>
+        </div>
+        <div v-if="notify.schedule.mode === 'interval'">
+          <label class="mb-1 block text-sm text-muted" for="notify-interval">Every</label>
+          <select id="notify-interval" v-model="notify.schedule.interval" class="input-field">
+            <option value="3h">3 hours</option>
+            <option value="6h">6 hours</option>
+            <option value="12h">12 hours</option>
+            <option value="24h">24 hours</option>
+          </select>
+        </div>
+        <div v-if="notify.schedule.mode === 'daily'">
+          <label class="mb-1 block text-sm text-muted" for="notify-at">At (server local time)</label>
+          <input id="notify-at" v-model="notify.schedule.at" type="time" class="input-field" />
+        </div>
+      </div>
+
+      <div class="space-y-4">
+        <div class="flex items-center justify-between gap-3">
+          <h2 class="text-sm font-medium text-heading">Webhooks</h2>
+          <button type="button" class="btn-secondary" @click="addWebhook">Add webhook</button>
+        </div>
+        <p v-if="!notify.webhooks.length" class="text-sm text-muted">No webhooks configured.</p>
+        <div v-for="(wh, index) in notify.webhooks" :key="wh.id || index" class="rounded-lg border border-default p-4 space-y-3">
+          <div class="grid gap-3 sm:grid-cols-2">
+            <div>
+              <label class="mb-1 block text-sm text-muted">Name</label>
+              <input v-model="wh.name" type="text" class="input-field" />
+            </div>
+            <div>
+              <label class="mb-1 block text-sm text-muted">Type</label>
+              <select v-model="wh.type" class="input-field">
+                <option value="discord">Discord</option>
+                <option value="slack">Slack</option>
+                <option value="teams">Teams (Workflows)</option>
+                <option value="custom">Custom</option>
+              </select>
+            </div>
+            <div v-if="wh.type !== 'custom'" class="sm:col-span-2">
+              <label class="mb-1 block text-sm text-muted">Message template</label>
+              <textarea
+                v-model="wh.message_template"
+                rows="4"
+                class="input-field font-mono text-xs"
+                :placeholder="`Default: {{count}} container image update(s) + {{summary}}. Variables: ${templateHelp}`"
+              />
+            </div>
+            <div v-if="wh.type === 'discord' || wh.type === 'teams'" class="sm:col-span-2">
+              <label class="mb-1 block text-sm text-muted">Title template</label>
+              <input
+                v-model="wh.title_template"
+                type="text"
+                class="input-field font-mono text-sm"
+                placeholder="Default: Container image updates"
+              />
+            </div>
+            <div v-if="wh.type === 'custom'" class="sm:col-span-2 space-y-2">
+              <div class="flex items-center justify-between gap-2">
+                <label class="text-sm text-muted">JSON body fields</label>
+                <button type="button" class="btn-secondary text-xs" @click="addCustomField(wh)">Add field</button>
+              </div>
+              <p class="text-xs text-muted">Each row becomes one key in the POST body. Values support templates: {{ templateHelp }}</p>
+              <div v-for="(field, fi) in wh.custom_fields" :key="fi" class="grid gap-2 sm:grid-cols-[1fr_2fr_auto]">
+                <input v-model="field.key" type="text" class="input-field font-mono text-sm" placeholder="key" />
+                <input v-model="field.value" type="text" class="input-field font-mono text-sm" placeholder="value template" />
+                <button type="button" class="btn-ghost" @click="removeCustomField(wh, fi)">Remove</button>
+              </div>
+            </div>
+            <div class="sm:col-span-2">
+              <label class="mb-1 block text-sm text-muted">Webhook URL</label>
+              <input v-model="wh.url" type="password" autocomplete="new-password" class="input-field" :placeholder="wh.url_set ? 'Saved' : 'https://'" />
+            </div>
+            <div>
+              <label class="mb-1 block text-sm text-muted">Auth</label>
+              <select v-model="wh.auth" class="input-field">
+                <option value="none">None</option>
+                <option value="basic">Basic</option>
+                <option value="bearer">Bearer</option>
+              </select>
+            </div>
+            <div v-if="showNotifyUser(wh)">
+              <label class="mb-1 block text-sm text-muted">Username</label>
+              <input v-model="wh.username" type="text" class="input-field" />
+            </div>
+            <div v-if="showNotifyToken(wh)" class="sm:col-span-2">
+              <label class="mb-1 block text-sm text-muted">Token / password</label>
+              <input v-model="wh.token" type="password" autocomplete="new-password" class="input-field" :placeholder="wh.token_set ? 'Saved' : ''" />
+            </div>
+          </div>
+          <label class="flex items-center gap-2 text-sm">
+            <input v-model="wh.enabled" type="checkbox" class="h-4 w-4 accent-[#1ebe8a]" />
+            Enabled
+          </label>
+          <div class="flex flex-wrap gap-2">
+            <button type="button" class="btn-secondary" :disabled="notifyTesting === (wh.id || wh.name)" @click="testWebhook(wh)">
+              {{ notifyTesting === (wh.id || wh.name) ? 'Testing…' : 'Test' }}
+            </button>
+            <button type="button" class="btn-ghost" @click="removeWebhook(index)">Remove</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex flex-wrap gap-2">
+        <button type="button" class="btn-primary" :disabled="notifySaving" @click="saveNotifications">
+          {{ notifySaving ? 'Saving…' : 'Save notifications' }}
+        </button>
+      </div>
+      <p v-if="notifyMessage" class="text-sm" :class="notifyMessageError ? 'text-danger' : 'text-accent'">{{ notifyMessage }}</p>
+      <dl v-if="notifyStatus.last_notify_at || notifyStatus.last_error" class="grid grid-cols-2 gap-3 text-sm">
+        <div>
+          <dt class="text-muted">Last notification</dt>
+          <dd class="text-heading">{{ formatWhen(notifyStatus.last_notify_at) }}</dd>
+        </div>
+        <div v-if="notifyStatus.last_error">
+          <dt class="text-muted">Last error</dt>
+          <dd class="text-danger">{{ notifyStatus.last_error }}</dd>
+        </div>
+      </dl>
     </section>
   </div>
 </template>
