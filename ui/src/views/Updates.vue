@@ -2,7 +2,7 @@
 import { ref, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { getUpdates, scanUpdates, updateContainer, removeImage } from '@/api/client'
-import { promptRemovePreviousImage } from '@/lib/images'
+import { promptRemovePreviousImage, promptRemovePreviousImages } from '@/lib/images'
 import { useEngineStore } from '@/stores/engine'
 import { useUiStore } from '@/stores/ui'
 import { errorMessage } from '@/lib/errors'
@@ -12,7 +12,12 @@ const store = useEngineStore()
 const ui = useUiStore()
 const report = ref({ pending: [], failures: [], scanned_at: '' })
 const scanning = ref(false)
+const updatingAll = ref(false)
 const updating = ref({})
+
+function anyUpdating() {
+  return updatingAll.value || Object.keys(updating.value).length > 0
+}
 
 onMounted(() => {
   refresh()
@@ -44,6 +49,7 @@ async function scanNow() {
 async function update(row) {
   const id = row.container_id
   updating.value = { ...updating.value, [id]: true }
+  ui.clear()
   try {
     const result = await updateContainer(id)
     if (result.previous_image && await promptRemovePreviousImage(result.previous_image)) {
@@ -56,6 +62,62 @@ async function update(row) {
     const next = { ...updating.value }
     delete next[id]
     updating.value = next
+  }
+}
+
+async function updateAll() {
+  const rows = [...(report.value.pending || [])]
+  if (!rows.length || anyUpdating()) return
+
+  updatingAll.value = true
+  ui.clear()
+  const previousImages = []
+  const failed = []
+  let ok = 0
+
+  for (const row of rows) {
+    const id = row.container_id
+    updating.value = { ...updating.value, [id]: true }
+    try {
+      const result = await updateContainer(id)
+      ok += 1
+      if (result.previous_image) previousImages.push(result.previous_image)
+      await refresh()
+    } catch (err) {
+      failed.push(row.name || id)
+    } finally {
+      const next = { ...updating.value }
+      delete next[id]
+      updating.value = next
+    }
+  }
+
+  if (previousImages.length && await promptRemovePreviousImages(previousImages)) {
+    const seen = new Set()
+    for (const img of previousImages) {
+      if (!img?.id || seen.has(img.id)) continue
+      seen.add(img.id)
+      try {
+        await removeImage(img.id)
+      } catch (err) {
+        ui.setError(errorMessage(err, 'Failed to remove previous image'))
+        break
+      }
+    }
+    await refresh()
+  }
+
+  updatingAll.value = false
+
+  if (failed.length) {
+    const detail = failed.join(', ')
+    if (ok > 0) {
+      ui.setError(`Updated ${ok} of ${rows.length}. Failed: ${detail}`)
+    } else {
+      ui.setError(`Update failed for: ${detail}`)
+    }
+  } else if (ok > 0) {
+    ui.setInfo(ok === 1 ? 'Updated 1 container.' : `Updated ${ok} containers.`)
   }
 }
 
@@ -76,7 +138,15 @@ function scannedLabel(value) {
   <div class="space-y-4">
     <div class="page-toolbar">
       <p class="mr-auto text-sm text-muted">Last scan: {{ scannedLabel(report.scanned_at) }}</p>
-      <button class="btn-ghost" :disabled="scanning" @click="scanNow">
+      <button
+        v-if="report.pending?.length"
+        class="btn-primary"
+        :disabled="scanning || anyUpdating()"
+        @click="updateAll"
+      >
+        {{ updatingAll ? 'Updating all…' : 'Update all' }}
+      </button>
+      <button class="btn-ghost" :disabled="scanning || anyUpdating()" @click="scanNow">
         {{ scanning ? 'Scanning…' : 'Scan now' }}
       </button>
     </div>
@@ -108,7 +178,7 @@ function scannedLabel(value) {
             <td class="py-2">
               <button
                 class="btn-ghost text-xs"
-                :disabled="!!updating[row.container_id]"
+                :disabled="anyUpdating()"
                 @click="update(row)"
               >
                 {{ updating[row.container_id] ? 'Updating…' : 'Update' }}

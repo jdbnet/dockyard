@@ -19,9 +19,31 @@ export function fmtBytes(b) {
   return fmtSize(b)
 }
 
-export async function promptRemovePreviousImage(img) {
-  if (!img?.id) return false
+function previousImageLine(img) {
   const label = imageLabel(img)
   const size = img.size ? ` (${fmtSize(img.size)})` : ''
-  return confirm(`Remove previous image ${label}${size}?`)
+  return `${label}${size}`
+}
+
+export async function promptRemovePreviousImage(img) {
+  if (!img?.id) return false
+  return confirm(`Remove previous image ${previousImageLine(img)}?`)
+}
+
+/** Deduplicate by image id; returns true if the user confirmed removal. */
+export async function promptRemovePreviousImages(images) {
+  const unique = []
+  const seen = new Set()
+  for (const img of images || []) {
+    if (img?.id && !seen.has(img.id)) {
+      seen.add(img.id)
+      unique.push(img)
+    }
+  }
+  if (!unique.length) return false
+  const lines = unique.map(previousImageLine)
+  const msg = unique.length === 1
+    ? `Remove previous image ${lines[0]}?`
+    : `Remove ${unique.length} previous image(s)?\n\n${lines.join('\n')}`
+  return confirm(msg)
 }
