@@ -72,9 +72,15 @@ events:
 restart_loop:
   threshold: 3
   window: 5m
+updates:
+  interval: 1h
+  autoupdate: false
+  autoupdate_interval: ""
+compose:
+  stacks_dir: /opt/stacks
 ```
 
-The same values can be edited under Settings in the web UI. Saving writes them back to `config.yaml`. Login changes apply immediately. The Docker socket, web address, stacks directory, and intervals apply after a restart.
+The same values can be edited under Settings in the web UI. Saving writes them back to `config.yaml`. Login and **auto-update** settings apply immediately. The Docker socket, web address, stacks directory, and **update scan interval** apply after a restart.
 
 Environment overrides: `DOCKYARD_DOCKER_SOCKET`, `DOCKYARD_WEB_PORT`, `DOCKYARD_WEB_BIND`, `DOCKYARD_WEB_ENABLED`, `DOCKYARD_AUTH_USER`, `DOCKYARD_AUTH_PASS`, `DOCKYARD_STACKS_DIR`, `DOCKYARD_UPDATES_INTERVAL`. These win over the file when Dockyard starts.
 
@@ -121,6 +127,61 @@ Collection:
 - If Dockyard itself is running in Docker, its own container is skipped unless that container has `dockyard.logs=true`.
 
 Extra labels on a stream come from Docker labels with the prefix `dockyard.logs.label.`. For example, `dockyard.logs.label.env=prod` becomes the Loki label `env=prod`. Each stream also has `host`, `container`, `image`, `stream` (`stdout` or `stderr`), and, for Compose, `compose_project` and `compose_service`.
+
+### Auto-update
+
+Dockyard compares local image digests to the registry (HEAD request) on a schedule. You can apply updates manually from the **Updates** page, or enable automatic updates.
+
+Global settings in `config.yaml` (or **Settings → General**):
+
+```yaml
+updates:
+  interval: 1h              # scan interval (restart required to change)
+  autoupdate: false         # apply updates when a newer image is found
+  autoupdate_interval: ""   # optional check interval; empty uses interval above
+```
+
+**Auto-update all containers** and **Auto-update check interval** apply **without a restart**. The scan interval still needs a restart.
+
+Precedence:
+
+- `dockyard.autoupdate=true` opts a container in; `false` opts it out. These beat the global toggle.
+- `dockyard.interval` (for example `1m`, minimum `10s`) checks that container more often. When auto-update is off, Dockyard still reports pending updates sooner but does not apply them.
+- If neither label is set, the global `autoupdate` setting applies.
+- **Safety rules always apply:** Dockyard never auto-updates its own container; images without a registry digest (locally built or loaded) are never auto-updated through the global setting; explicit `dockyard.autoupdate=true` on such an image shows a failure instead.
+
+When auto-update applies an update, the previous image is removed automatically if nothing else uses it.
+
+### Labels
+
+Docker labels are fixed when a container is created. Recreate the container after changing labels.
+
+| Label | Values | Default | Effect |
+| --- | --- | --- | --- |
+| `dockyard.autoupdate` | `true` / `false` | (follow global) | Opt in or out of automatic updates |
+| `dockyard.interval` | Go duration (`30s`, `1m`, …) | scan interval | How often to check this container (minimum `10s`) |
+| `dockyard.logs` | `true` / `false` | `collect_by_default` | Include or exclude log shipping |
+| `dockyard.logs.label.<name>` | any string | — | Extra log stream label `<name>` |
+| `com.docker.compose.project` | project name | — | Compose grouping and stack updates |
+| `com.docker.compose.service` | service name | — | Compose service for `docker compose pull` |
+| `com.docker.compose.project.working_dir` | path | — | External compose project directory |
+
+Example:
+
+```yaml
+services:
+  store:
+    image: ghcr.io/<owner>/<image>:latest
+    labels:
+      dockyard.autoupdate: "true"
+      dockyard.interval: "1m"
+```
+
+Private **ghcr.io** images need `docker login ghcr.io` (token with `read:packages`) as the user Dockyard runs as. For the systemd unit that is usually root (`/root/.docker/config.json`). For the Docker image, mount `config.json` as shown in `docker-compose.yaml`.
+
+Only **tag** references are checked (`nginx:latest`), not `@sha256` pins.
+
+With global auto-update on, every eligible container on `:latest` is recreated when a new image appears. Opt important stateful services out with `dockyard.autoupdate=false`.
 
 ### Update notifications
 

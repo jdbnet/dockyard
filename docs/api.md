@@ -32,6 +32,8 @@ curl -s -X POST -H "Authorization: Bearer $DOCKYARD_KEY" \
 
 A container `id` may be the full id, the short id, or the name.
 
+Container objects include `auto_update` and `update_interval` when Dockyard reads `dockyard.autoupdate` / `dockyard.interval` on the container.
+
 ## Errors
 
 ```json
