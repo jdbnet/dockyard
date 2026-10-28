@@ -4,12 +4,14 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/docker/docker/api/types/registry"
+	"github.com/google/go-containerregistry/pkg/authn"
 )
 
 func TestDockerHomeDirWithoutHOME(t *testing.T) {
@@ -108,6 +110,32 @@ func TestAuthForImageCredentialHelper(t *testing.T) {
 	}
 	if got.Username != "helperuser" || got.Password != "helperpass" {
 		t.Fatalf("got %+v", got)
+	}
+}
+
+func TestRegistryAuthError(t *testing.T) {
+	if RegistryAuthError(nil) {
+		t.Fatal("nil")
+	}
+	if !RegistryAuthError(errors.New("unauthorized")) {
+		t.Fatal("unauthorized")
+	}
+	wrapped := fmt.Errorf("no Docker credentials for ghcr.io in /root/.docker/config.json: %w", errors.New("unauthorized"))
+	if !RegistryAuthError(wrapped) {
+		t.Fatal("wrapped")
+	}
+	if RegistryAuthError(errors.New("connection refused")) {
+		t.Fatal("connection refused")
+	}
+}
+
+func TestRegistryAuthenticatorAnonymous(t *testing.T) {
+	auth := registryAuthenticator(registry.AuthConfig{}, false)
+	if auth == authn.Anonymous {
+		return
+	}
+	if _, err := auth.Authorization(); err != nil {
+		t.Fatal(err)
 	}
 }
 

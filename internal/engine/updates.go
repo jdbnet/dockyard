@@ -5,6 +5,8 @@ import (
 	"log"
 	"strings"
 	"time"
+
+	"github.com/jdbnet/dockyard/internal/docker"
 )
 
 func (e *Engine) pollUpdates(ctx context.Context) {
@@ -89,7 +91,7 @@ func (e *Engine) scanUpdates(ctx context.Context) error {
 
 		remote, ok := remoteByRef[c.Image]
 		if !ok {
-			digest, remoteErr := e.docker.RemoteImageDigest(ctx, c.Image)
+			digest, remoteErr := e.remoteDigestForRef(ctx, c.Image)
 			remote = remoteDigest{digest: digest, err: remoteErr}
 			remoteByRef[c.Image] = remote
 		}
@@ -206,4 +208,15 @@ func digestListed(remote string, repoDigests []string) bool {
 		}
 	}
 	return false
+}
+
+func (e *Engine) remoteDigestForRef(ctx context.Context, ref string) (string, error) {
+	digest, err := e.docker.RemoteManifestDigest(ctx, ref)
+	if err == nil {
+		return digest, nil
+	}
+	if docker.RegistryAuthError(err) {
+		return "", err
+	}
+	return e.docker.RemoteImageDigest(ctx, ref)
 }

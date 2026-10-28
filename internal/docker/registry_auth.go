@@ -32,26 +32,32 @@ type credentialHelperResponse struct {
 	Secret   string `json:"Secret"`
 }
 
-// encodedRegistryAuth returns the X-Registry-Auth value for imageRef using the
-// same Docker config and credential helpers as the docker CLI. An empty string
-// means no credentials are stored for that registry.
-func encodedRegistryAuth(imageRef string) (string, error) {
+// registryAuthConfig returns Docker registry credentials for imageRef using the
+// same Docker config and credential helpers as the docker CLI.
+func registryAuthConfig(imageRef string) (registry.AuthConfig, bool, error) {
 	path := dockerConfigPath()
 	if path == "" {
-		return "", nil
+		return registry.AuthConfig{}, false, nil
 	}
 	raw, err := os.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return "", nil
+			return registry.AuthConfig{}, false, nil
 		}
-		return "", err
+		return registry.AuthConfig{}, false, err
 	}
 	var cfg dockerConfigFile
 	if err := json.Unmarshal(raw, &cfg); err != nil {
-		return "", fmt.Errorf("parse docker config: %w", err)
+		return registry.AuthConfig{}, false, fmt.Errorf("parse docker config: %w", err)
 	}
-	auth, ok, err := cfg.authForImage(imageRef)
+	return cfg.authForImage(imageRef)
+}
+
+// encodedRegistryAuth returns the X-Registry-Auth value for imageRef using the
+// same Docker config and credential helpers as the docker CLI. An empty string
+// means no credentials are stored for that registry.
+func encodedRegistryAuth(imageRef string) (string, error) {
+	auth, ok, err := registryAuthConfig(imageRef)
 	if err != nil || !ok {
 		return "", err
 	}
@@ -77,6 +83,31 @@ func annotateRegistryAuth(ref, encoded string, err error) error {
 		return fmt.Errorf("no Docker credentials for %s: %w", host, err)
 	}
 	return fmt.Errorf("no Docker credentials for %s in %s: %w", host, path, err)
+}
+
+// RegistryAuthError reports whether err looks like missing or rejected registry credentials.
+func RegistryAuthError(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := strings.ToLower(err.Error())
+	return strings.Contains(msg, "unauthorized") ||
+		strings.Contains(msg, "authentication required") ||
+		strings.Contains(msg, "no docker credentials for")
+}
+
+func encodedAuthForAnnotate(auth registry.AuthConfig, ok bool) string {
+	if !ok {
+		return ""
+	}
+	if auth.Username == "" && auth.Password == "" && auth.IdentityToken == "" && auth.RegistryToken == "" {
+		return ""
+	}
+	encoded, err := registry.EncodeAuthConfig(auth)
+	if err != nil {
+		return ""
+	}
+	return encoded
 }
 
 func dockerConfigPath() string {
