@@ -2,8 +2,8 @@
 
 Ship container stdout/stderr to **GoLogs** or **Loki** from **Settings → Logging**.
 
-- `collect_by_default: true` — ship all running containers unless `dockyard.logs=false`.
-- `collect_by_default: false` — ship only `dockyard.logs=true`.
+- `collect_by_default: true` - ship all running containers unless `dockyard.logs=false`.
+- `collect_by_default: false` - ship only `dockyard.logs=true`.
 
 Supported drivers: **json-file** and **local** only.
 

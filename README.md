@@ -161,10 +161,10 @@ Docker labels are fixed when a container is created. Recreate the container afte
 | `dockyard.autoupdate` | `true` / `false` | (follow global) | Opt in or out of automatic updates |
 | `dockyard.interval` | Go duration (`30s`, `1m`, …) | scan interval | How often to check this container (minimum `10s`) |
 | `dockyard.logs` | `true` / `false` | `collect_by_default` | Include or exclude log shipping |
-| `dockyard.logs.label.<name>` | any string | — | Extra log stream label `<name>` |
-| `com.docker.compose.project` | project name | — | Compose grouping and stack updates |
-| `com.docker.compose.service` | service name | — | Compose service for `docker compose pull` |
-| `com.docker.compose.project.working_dir` | path | — | External compose project directory |
+| `dockyard.logs.label.<name>` | any string | - | Extra log stream label `<name>` |
+| `com.docker.compose.project` | project name | - | Compose grouping and stack updates |
+| `com.docker.compose.service` | service name | - | Compose service for `docker compose pull` |
+| `com.docker.compose.project.working_dir` | path | - | External compose project directory |
 
 Example:
 
@@ -195,9 +195,9 @@ Configure them under **Settings → Update notifications**. You can add multiple
 
 **Schedule modes:**
 
-- **Instant** — notify when the set of pending updates changes (hash of container id + remote digest).
-- **Interval** — repeat while updates remain (for example every 3h, 6h, or 12h).
-- **Daily** — once per day at a set local time while updates remain.
+- **Instant** - notify when the set of pending updates changes (hash of container id + remote digest).
+- **Interval** - repeat while updates remain (for example every 3h, 6h, or 12h).
+- **Daily** - once per day at a set local time while updates remain.
 
 Optional **public URL** adds an “Open updates” link to formatted messages (`{public_url}/updates`).
 

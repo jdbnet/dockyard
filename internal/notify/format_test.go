@@ -110,7 +110,7 @@ func TestCustomFieldsJSONEscape(t *testing.T) {
 func TestCustomMessageTemplateOnSlack(t *testing.T) {
 	wh := config.WebhookConfig{
 		Type:            "slack",
-		MessageTemplate: "Alert: {{count}} pending — {{names}}",
+		MessageTemplate: "Alert: {{count}} pending - {{names}}",
 	}
 	p, err := buildSlack(wh, "", SampleReport())
 	if err != nil {

@@ -44,7 +44,7 @@ const source = computed(() => {
   return mdModules['../help/overview.md']
 })
 
-// Sanitised HTML only — markdown-it escapes raw HTML; DOMPurify is a second layer before v-html.
+// Sanitised HTML only - markdown-it escapes raw HTML; DOMPurify is a second layer before v-html.
 const html = computed(() => DOMPurify.sanitize(md.render(source.value || '')))
 
 function onContentClick(event) {
@@ -82,7 +82,7 @@ function onContentClick(event) {
     </div>
 
     <p v-if="unknownPage" class="text-sm text-muted">
-      That help page was not found — showing the overview instead.
+      That help page was not found - showing the overview instead.
     </p>
   </div>
 </template>

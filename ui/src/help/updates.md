@@ -10,8 +10,8 @@ Registry checks use a **HEAD** request (not a full manifest pull) so frequent ch
 
 In **Settings → General**:
 
-- **Auto-update all containers** — recreate containers when a newer image is found (applies immediately).
-- **Auto-update check interval** — how often to check; leave blank to use the scan interval.
+- **Auto-update all containers** - recreate containers when a newer image is found (applies immediately).
+- **Auto-update check interval** - how often to check; leave blank to use the scan interval.
 
 Per-container labels override the global toggle. See [Labels](/help/labels).
 
