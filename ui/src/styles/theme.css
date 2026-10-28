@@ -290,4 +290,64 @@
   html.dark .uplot {
     color: #8b949e;
   }
+
+  .help-prose {
+    @apply max-w-none space-y-4 text-sm leading-relaxed text-neutral-900 dark:text-neutral-100;
+  }
+
+  .help-prose h1 {
+    @apply text-xl font-semibold text-neutral-900 dark:text-neutral-100;
+  }
+
+  .help-prose h2 {
+    @apply mt-6 text-base font-semibold text-neutral-900 dark:text-neutral-100;
+  }
+
+  .help-prose p {
+    @apply text-neutral-500 dark:text-neutral-400;
+  }
+
+  .help-prose ul {
+    @apply list-disc space-y-1 pl-5 text-neutral-500 dark:text-neutral-400;
+  }
+
+  .help-prose a {
+    color: var(--color-accent);
+    @apply underline underline-offset-2;
+  }
+
+  .help-prose code {
+    @apply rounded px-1 py-0.5 font-mono text-xs text-neutral-900 dark:text-neutral-100;
+    background-color: var(--color-canvas-inset);
+  }
+
+  html.dark .help-prose code {
+    background-color: var(--color-canvas-inset-dark);
+  }
+
+  .help-prose pre {
+    @apply overflow-x-auto rounded-lg p-3 font-mono text-xs text-neutral-900 dark:text-neutral-100;
+    background-color: var(--color-canvas-inset);
+  }
+
+  html.dark .help-prose pre {
+    background-color: var(--color-canvas-inset-dark);
+  }
+
+  .help-prose pre code {
+    @apply bg-transparent p-0;
+  }
+
+  .help-prose table {
+    @apply w-full border-collapse text-left text-xs;
+  }
+
+  .help-prose th,
+  .help-prose td {
+    @apply border border-neutral-200 px-2 py-1 dark:border-neutral-700;
+  }
+
+  .help-prose th {
+    @apply font-medium text-neutral-900 dark:text-neutral-100;
+  }
 }

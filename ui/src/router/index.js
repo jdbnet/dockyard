@@ -30,6 +30,7 @@ const router = createRouter({
     { path: '/ports', name: 'ports', component: Ports },
     { path: '/settings', name: 'settings', component: Settings },
     { path: '/settings/api-keys', name: 'api-keys', component: ApiKeys },
+    { path: '/help/:page?', name: 'help', component: () => import('@/views/Help.vue') },
     { path: '/docs', name: 'docs', component: () => import('@/views/Docs.vue'), meta: { public: true } },
   ],
 })
