@@ -251,10 +251,14 @@ func buildNetworkRows(list []engine.Network) []rowItem {
 func buildUpdateRows(report engine.UpdatesReport) []rowItem {
 	rows := make([]rowItem, 0, len(report.Pending)+len(report.Failures))
 	for _, item := range report.Pending {
+		name := item.Name
+		if item.AutoUpdate {
+			name += " (auto)"
+		}
 		rows = append(rows, rowItem{
 			id: item.ContainerID,
 			cols: []string{
-				item.Name,
+				name,
 				item.Image,
 				shortDigest(item.LocalDigest),
 				shortDigest(item.RemoteDigest),

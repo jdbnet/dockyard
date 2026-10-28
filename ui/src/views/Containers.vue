@@ -3,6 +3,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useEngineStore } from '@/stores/engine'
 import { containerAction, updateContainer, removeImage } from '@/api/client'
+import { RefreshCw } from '@lucide/vue'
 import { promptRemovePreviousImage, fmtBytes } from '@/lib/images'
 import { useUiStore } from '@/stores/ui'
 import { errorMessage } from '@/lib/errors'
@@ -225,6 +226,14 @@ function fmtStat(v) {
                 >
                   {{ c.name }}
                 </button>
+                <span
+                  v-if="c.auto_update"
+                  class="ml-2 inline-flex items-center gap-1 badge badge-running text-xs"
+                  :title="c.update_interval ? `Every ${c.update_interval}` : 'Auto-update'"
+                >
+                  <RefreshCw class="h-3 w-3" aria-hidden="true" />
+                  Auto{{ c.update_interval ? ` · ${c.update_interval}` : '' }}
+                </span>
               </td>
               <td class="py-2 pr-4">
                 <span class="badge" :class="statusBadge(c)">{{ statusLabel(c) }}</span>

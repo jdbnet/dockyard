@@ -24,7 +24,13 @@ onMounted(() => {
 })
 
 watch(() => store.lastEvent, (ev) => {
-  if (ev?.type === 'updates') refresh()
+  if (ev?.type !== 'updates') return
+  if (ev.action === 'auto_update' && ev.message) {
+    ui.setInfo(ev.message)
+  } else if (ev.action === 'auto_update_failed' && ev.message) {
+    ui.setError(ev.message)
+  }
+  refresh()
 })
 
 async function refresh() {
@@ -171,6 +177,7 @@ function scannedLabel(value) {
               >
                 {{ row.name }}
               </button>
+              <span v-if="row.auto_update" class="ml-2 badge badge-running text-xs">auto</span>
             </td>
             <td class="py-2 font-mono text-xs">{{ row.image }}</td>
             <td class="py-2 font-mono text-xs text-muted">{{ shortDigest(row.local_digest) }}</td>

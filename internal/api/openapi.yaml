@@ -36,6 +36,8 @@ components:
         cpu_pct: { type: number }
         mem_bytes: { type: integer }
         mem_pct: { type: number }
+        auto_update: { type: boolean }
+        update_interval: { type: string }
     Stats:
       type: object
       properties:

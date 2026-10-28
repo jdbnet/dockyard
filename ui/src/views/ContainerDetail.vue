@@ -8,6 +8,7 @@ import { promptRemovePreviousImage, fmtBytes } from '@/lib/images'
 import { useEngineStore } from '@/stores/engine'
 import { useUiStore } from '@/stores/ui'
 import { errorMessage } from '@/lib/errors'
+import { RefreshCw } from '@lucide/vue'
 import TerminalPanel from '@/components/TerminalPanel.vue'
 
 const route = useRoute()
@@ -212,6 +213,10 @@ onUnmounted(() => {
       <div>
         <h2 class="text-2xl font-semibold text-heading">{{ container.name }}</h2>
         <p class="text-sm text-muted">{{ container.image }}</p>
+        <p v-if="container.auto_update" class="mt-1 inline-flex items-center gap-1 text-xs text-accent">
+          <RefreshCw class="h-3.5 w-3.5" aria-hidden="true" />
+          Auto-update<span v-if="container.update_interval"> · {{ container.update_interval }}</span>
+        </p>
       </div>
       <div class="flex gap-2">
         <button

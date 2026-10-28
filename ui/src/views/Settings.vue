@@ -42,6 +42,8 @@ const general = ref({
   restart_window: '5m',
   tui_refresh_rate: '100ms',
   updates_interval: '1h',
+  updates_autoupdate: false,
+  updates_autoupdate_interval: '',
 })
 const authPasswordSet = ref(false)
 const savingGeneral = ref(false)
@@ -110,6 +112,8 @@ function applyGeneral(data) {
     restart_window: data.restart_window || '5m',
     tui_refresh_rate: data.tui_refresh_rate || '100ms',
     updates_interval: data.updates_interval || '1h',
+    updates_autoupdate: !!data.updates_autoupdate,
+    updates_autoupdate_interval: data.updates_autoupdate_interval || '',
   }
   authPasswordSet.value = !!data.auth_password_set
 }
@@ -127,7 +131,7 @@ async function saveGeneral() {
   setGeneralMessage('', false)
   try {
     applyGeneral(await saveSettings(general.value))
-    setGeneralMessage('Settings saved to config.yaml. Authentication applies now. The Docker socket, web address, stacks directory, and intervals apply after a restart.', false)
+    setGeneralMessage('Settings saved to config.yaml. Authentication and auto-update settings apply now. The Docker socket, web address, stacks directory, and update scan interval apply after a restart.', false)
   } catch (err) {
     setGeneralMessage(errorMessage(err, 'Failed to save settings'), true)
   } finally {
@@ -495,6 +499,25 @@ const stateLabel = computed(() => {
           <label class="mb-1 block text-sm text-muted" for="updates-interval">Update scan interval</label>
           <input id="updates-interval" v-model="general.updates_interval" type="text" class="input-field" />
         </div>
+        <div class="sm:col-span-2">
+          <label class="flex items-center gap-2 text-sm">
+            <input v-model="general.updates_autoupdate" type="checkbox" class="h-4 w-4 accent-[#1ebe8a]" />
+            Auto-update all containers
+          </label>
+          <p class="mt-1 text-xs text-muted">
+            Containers can opt in or out with the <code class="font-mono">dockyard.autoupdate</code> label. Locally built images and Dockyard itself are never auto-updated.
+          </p>
+        </div>
+        <div>
+          <label class="mb-1 block text-sm text-muted" for="autoupdate-interval">Auto-update check interval</label>
+          <input
+            id="autoupdate-interval"
+            v-model="general.updates_autoupdate_interval"
+            type="text"
+            class="input-field"
+            placeholder="same as scan interval"
+          />
+        </div>
         <div>
           <label class="mb-1 block text-sm text-muted" for="restart-threshold">Restart threshold</label>
           <input id="restart-threshold" v-model.number="general.restart_threshold" type="number" min="1" class="input-field" />
@@ -508,7 +531,7 @@ const stateLabel = computed(() => {
           <input id="tui-refresh" v-model="general.tui_refresh_rate" type="text" class="input-field" />
         </div>
       </div>
-      <p class="text-sm text-muted">Intervals apply after a restart. The restart threshold applies immediately. Durations use values such as 100ms, 5s, 5m, or 1h.</p>
+      <p class="text-sm text-muted">The update scan interval applies after a restart. Auto-update settings and the restart threshold apply immediately. Durations use values such as 100ms, 5s, 5m, or 1h.</p>
 
       <button type="button" class="btn-primary" :disabled="savingGeneral" @click="saveGeneral">
         {{ savingGeneral ? 'Saving…' : 'Save general settings' }}
