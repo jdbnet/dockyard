@@ -22,6 +22,8 @@ type Container struct {
 	MemBytes       uint64      `json:"mem_bytes"`
 	Ports          []string    `json:"ports"`
 	Sparkline      []StatPoint `json:"sparkline,omitempty"`
+	AutoUpdate     bool        `json:"auto_update"`
+	UpdateInterval string      `json:"update_interval,omitempty"`
 }
 
 type ComposeProject struct {
@@ -90,6 +92,7 @@ type ImageUpdate struct {
 	LocalDigest  string `json:"local_digest"`
 	RemoteDigest string `json:"remote_digest"`
 	Error        string `json:"error,omitempty"`
+	AutoUpdate   bool   `json:"auto_update"`
 }
 
 type UpdatesReport struct {

@@ -245,33 +245,55 @@ func (e *Engine) UpdateContainer(ctx context.Context, id string) (UpdateContaine
 	if err != nil {
 		return UpdateContainerResult{}, err
 	}
+	if err := e.beginContainerUpdate(insp.Summary.Name); err != nil {
+		return UpdateContainerResult{}, err
+	}
+	defer e.endContainerUpdate(insp.Summary.Name)
+
 	previousImageID := insp.ImageID
+	if _, err := e.updateContainerByID(ctx, id, insp); err != nil {
+		return UpdateContainerResult{}, err
+	}
+	return e.finishContainerUpdate(ctx, previousImageID, true)
+}
+
+func (e *Engine) updateContainerByID(ctx context.Context, id string, insp *docker.InspectResult) (string, error) {
 	project, service, workingDir := docker.ContainerComposeInfo(insp.Summary.Labels)
 
 	if project != "" && service != "" {
 		stack, stackErr := e.stackByName(ctx, project)
 		if stackErr == nil {
 			if err := e.stacks.UpdateService(ctx, stack, service); err == nil {
-				return e.finishContainerUpdate(ctx, previousImageID)
+				return e.containerIDByName(ctx, insp.Summary.Name)
 			}
 		}
 		if workingDir != "" {
 			ext, err := compose.StackFromPath(project, workingDir)
 			if err == nil {
 				if err := e.stacks.UpdateService(ctx, ext, service); err == nil {
-					return e.finishContainerUpdate(ctx, previousImageID)
+					return e.containerIDByName(ctx, insp.Summary.Name)
 				}
 			}
 		}
 	}
 
-	if _, err := e.docker.RecreateContainer(ctx, id); err != nil {
-		return UpdateContainerResult{}, err
-	}
-	return e.finishContainerUpdate(ctx, previousImageID)
+	return e.docker.RecreateContainer(ctx, id)
 }
 
-func (e *Engine) finishContainerUpdate(ctx context.Context, previousImageID string) (UpdateContainerResult, error) {
+func (e *Engine) containerIDByName(ctx context.Context, name string) (string, error) {
+	list, err := e.docker.ListContainers(ctx, true)
+	if err != nil {
+		return "", err
+	}
+	for _, c := range list {
+		if c.Name == name {
+			return c.ID, nil
+		}
+	}
+	return "", fmt.Errorf("container %q not found after update", name)
+}
+
+func (e *Engine) finishContainerUpdate(ctx context.Context, previousImageID string, scanAfter bool) (UpdateContainerResult, error) {
 	if err := e.refreshAll(ctx); err != nil {
 		return UpdateContainerResult{}, err
 	}
@@ -279,8 +301,10 @@ func (e *Engine) finishContainerUpdate(ctx context.Context, previousImageID stri
 	if img := e.removableImage(ctx, previousImageID); img != nil {
 		result.PreviousImage = img
 	}
-	if err := e.scanUpdates(ctx); err != nil {
-		log.Printf("updates scan: %v", err)
+	if scanAfter {
+		if err := e.scanUpdates(ctx); err != nil {
+			log.Printf("updates scan: %v", err)
+		}
 	}
 	return result, nil
 }

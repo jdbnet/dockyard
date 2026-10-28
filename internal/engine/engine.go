@@ -29,8 +29,16 @@ type Engine struct {
 	subMu    sync.RWMutex
 	subs     map[chan Event]struct{}
 	cancel   context.CancelFunc
+	runCtx   context.Context
 	scanMu   sync.Mutex
 	updates  UpdatesReport
+	autoMu   sync.Mutex
+	autoNextCheck        map[string]time.Time
+	autoInFlight         map[string]bool
+	autoLastFailedDigest map[string]string
+	autoRows             map[string]ImageUpdate
+	autoResetNextCheck   bool
+	selfIDs              []string
 	shipper  *logging.Shipper
 	notifier *notify.Notifier
 }
@@ -82,15 +90,20 @@ func New(cfg *config.Config, dc *docker.Client) (*Engine, error) {
 		return nil, fmt.Errorf("log shipping: %w", err)
 	}
 	e := &Engine{
-		cfg:      cfg,
-		docker:   dc,
-		stacks:   stacks,
-		external: external,
-		store:    newStore(),
-		stats:    newStatsCache(),
-		tracker:  newRestartTracker(cfg.RestartLoop.Threshold, cfg.RestartLoop.Window.Duration),
-		subs:     make(map[chan Event]struct{}),
-		shipper:  shipper,
+		cfg:                  cfg,
+		docker:               dc,
+		stacks:               stacks,
+		external:             external,
+		store:                newStore(),
+		stats:                newStatsCache(),
+		tracker:              newRestartTracker(cfg.RestartLoop.Threshold, cfg.RestartLoop.Window.Duration),
+		subs:                 make(map[chan Event]struct{}),
+		shipper:              shipper,
+		autoNextCheck:        map[string]time.Time{},
+		autoInFlight:         map[string]bool{},
+		autoLastFailedDigest: map[string]string{},
+		autoRows:             map[string]ImageUpdate{},
+		selfIDs:              logging.OwnContainerIDs(),
 	}
 	e.notifier = notify.New(cfg.Notifications, e.notifyReport)
 	return e, nil
@@ -98,10 +111,12 @@ func New(cfg *config.Config, dc *docker.Client) (*Engine, error) {
 
 func (e *Engine) Run(ctx context.Context) error {
 	ctx, e.cancel = context.WithCancel(ctx)
+	e.runCtx = ctx
 	go e.watchEventsLoop(ctx)
 	go e.pollStats(ctx)
 	go e.fallbackRefresh(ctx)
 	go e.pollUpdates(ctx)
+	go e.pollAutoUpdates(ctx)
 	if e.notifier != nil {
 		e.notifier.RunSchedule(ctx)
 	}
@@ -197,7 +212,7 @@ func (e *Engine) refreshContainers(ctx context.Context) error {
 	}
 	out := make([]Container, 0, len(list))
 	for _, c := range list {
-		ctr := mapContainerSummary(c, e.tracker)
+		ctr := formatContainerSummary(c, e.tracker, e.cfg.Updates)
 		if pt, ok := e.stats.latest(c.ID); ok {
 			ctr.CPUPct = pt.CPUPct
 			ctr.MemPct = pt.MemPct

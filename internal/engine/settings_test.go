@@ -35,6 +35,7 @@ func TestUpdateGeneralKeepsPasswordAndRejectsBadDuration(t *testing.T) {
 		RestartWindow:         "10m",
 		TUIRefreshRate:        "100ms",
 		UpdatesInterval:       "1h",
+		UpdatesAutoUpdate:     false,
 	}
 	saved, err := e.UpdateGeneral(update)
 	if err != nil {

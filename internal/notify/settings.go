@@ -206,7 +206,7 @@ func MergeUpdate(current config.NotificationsConfig, update SettingsUpdate) conf
 	next.PublicURL = update.PublicURL
 	next.Schedule.Mode = update.Schedule.Mode
 	if d, err := time.ParseDuration(strings.TrimSpace(update.Schedule.Interval)); err == nil && d > 0 {
-		next.Schedule.Interval = config.Duration{d}
+		next.Schedule.Interval = config.Duration{Duration: d}
 	}
 	next.Schedule.At = update.Schedule.At
 

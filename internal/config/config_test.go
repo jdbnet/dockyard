@@ -120,6 +120,16 @@ func TestUpdatesIntervalEnv(t *testing.T) {
 	}
 }
 
+func TestDefaultAutoUpdateSettings(t *testing.T) {
+	cfg := defaultConfig()
+	if cfg.Updates.AutoUpdate {
+		t.Fatal("autoupdate should default false")
+	}
+	if cfg.Updates.AutoUpdateInterval.Duration != 0 {
+		t.Fatal("autoupdate_interval should default zero")
+	}
+}
+
 func TestWebBindIsLoopback(t *testing.T) {
 	cfg := defaultConfig()
 	if !cfg.WebBindIsLoopback() {

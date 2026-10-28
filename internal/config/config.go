@@ -112,7 +112,9 @@ type TUIConfig struct {
 }
 
 type UpdatesConfig struct {
-	Interval Duration `yaml:"interval"`
+	Interval           Duration `yaml:"interval"`
+	AutoUpdate         bool     `yaml:"autoupdate"`
+	AutoUpdateInterval Duration `yaml:"autoupdate_interval"`
 }
 
 type LoggingConfig struct {
@@ -215,7 +217,9 @@ func defaultConfig() *Config {
 			RefreshRate: Duration{100 * time.Millisecond},
 		},
 		Updates: UpdatesConfig{
-			Interval: Duration{time.Hour},
+			Interval:           Duration{time.Hour},
+			AutoUpdate:         false,
+			AutoUpdateInterval: Duration{0},
 		},
 		Logging: LoggingConfig{
 			Type:             "gologs",

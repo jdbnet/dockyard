@@ -21,6 +21,8 @@ compose:
   stacks_dir: /opt/stacks
 updates:
   interval: 1h
+  autoupdate: false
+  autoupdate_interval: ""
 logging:
   enabled: false
   url: ""

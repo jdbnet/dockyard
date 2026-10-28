@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/jdbnet/dockyard/internal/docker"
+	"github.com/jdbnet/dockyard/internal/logging"
 )
 
 func (e *Engine) pollUpdates(ctx context.Context) {
@@ -37,16 +38,19 @@ func (e *Engine) ScanUpdates(ctx context.Context) error {
 
 func (e *Engine) Updates() UpdatesReport {
 	e.scanMu.Lock()
-	defer e.scanMu.Unlock()
-	return cloneUpdates(e.updates)
+	base := cloneUpdates(e.updates)
+	e.scanMu.Unlock()
+	e.autoMu.Lock()
+	defer e.autoMu.Unlock()
+	return mergeAutoRows(base, e.autoRows)
 }
 
 func (e *Engine) scanUpdates(ctx context.Context) error {
 	e.scanMu.Lock()
-	defer e.scanMu.Unlock()
 
 	list, err := e.docker.ListContainers(ctx, false)
 	if err != nil {
+		e.scanMu.Unlock()
 		return err
 	}
 
@@ -87,6 +91,10 @@ func (e *Engine) scanUpdates(ctx context.Context) error {
 			report.Failures = append(report.Failures, row)
 			continue
 		}
+		hasRepoDigests := len(inspected.digests) > 0
+		if autoLoopOwnsContainer(c.Labels, e.cfg.Updates, logging.IsSelf(c.ID, e.selfIDs), hasRepoDigests) {
+			continue
+		}
 		row.LocalDigest = localDigestForRef(c.Image, inspected.digests)
 
 		remote, ok := remoteByRef[c.Image]
@@ -108,8 +116,9 @@ func (e *Engine) scanUpdates(ctx context.Context) error {
 
 	e.updates = report
 	e.broadcast(Event{Type: "updates", Action: "scan", Timestamp: report.ScannedAt})
+	e.scanMu.Unlock()
 	if e.notifier != nil {
-		e.notifier.MaybeNotifyInstant(ctx, toNotifyReport(report))
+		e.notifier.MaybeNotifyInstant(ctx, toNotifyReport(e.Updates()))
 	}
 	return nil
 }

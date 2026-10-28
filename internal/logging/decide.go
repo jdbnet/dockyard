@@ -90,6 +90,11 @@ func driverReason(driver string) string {
 	return "log driver " + driver
 }
 
+// IsSelf reports whether containerID is one of the Dockyard process containers.
+func IsSelf(containerID string, selfIDs []string) bool {
+	return isSelf(containerID, selfIDs)
+}
+
 func isSelf(containerID string, selfIDs []string) bool {
 	id := strings.ToLower(containerID)
 	if len(id) < 12 {

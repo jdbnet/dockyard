@@ -118,7 +118,7 @@ func TestIntervalNotifierFiresWithUnchangedPending(t *testing.T) {
 		Enabled: true,
 		Schedule: config.NotifyScheduleConfig{
 			Mode:     ScheduleInterval,
-			Interval: config.Duration{50 * time.Millisecond},
+			Interval: config.Duration{Duration: 50 * time.Millisecond},
 		},
 		Webhooks: []config.WebhookConfig{{
 			ID: "1", Name: "t", Type: "custom", URL: srv.URL, Enabled: true,
